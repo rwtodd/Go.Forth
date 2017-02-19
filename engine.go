@@ -7,7 +7,7 @@ import (
 
 // A Word in forth is an operation on the VM
 type Word struct {
-	Run       func(*VM)
+	Run       func(*VM) error
 	Immediate bool
 }
 
@@ -25,8 +25,7 @@ type VM struct {
 
 	marker uint16 // place to roll back to when we FORGET
 
-	Compiling bool  // are we compiling right now?
-	Err       error // the error state of the vm.
+	Compiling bool // are we compiling right now?
 }
 
 // Define adds a word to the VM
@@ -57,11 +56,11 @@ func (vm *VM) Push(v interface{}) {
 }
 
 // Pop a value from the stack, returning the value there
-func (vm *VM) Pop() (v interface{}) {
+func (vm *VM) Pop() (v interface{}, err error) {
 	l := len(vm.Stack) - 1
 	if l < 0 {
-		vm.Err = ErrUnderflow
-		return nil
+		err = ErrUnderflow
+		return
 	}
 	v = vm.Stack[l]
 	vm.Stack = vm.Stack[:l]
@@ -74,8 +73,12 @@ func (vm *VM) RPush(v interface{}) {
 }
 
 // RPop pops a value from the return stack, returning the value there
-func (vm *VM) RPop() (v interface{}) {
+func (vm *VM) RPop() (v interface{}, err error) {
 	l := len(vm.Rstack) - 1
+	if l < 0 {
+		err = ErrUnderflow
+		return
+	}
 	v = vm.Rstack[l]
 	vm.Rstack = vm.Rstack[:l]
 	return
@@ -84,7 +87,7 @@ func (vm *VM) RPop() (v interface{}) {
 // CreatePusher generates a word in the dictionary, and returns the
 // index for the word.  No name is associated with the word.
 func (vm *VM) CreatePusher(v interface{}) uint16 {
-	vm.words = append(vm.words, Word{Run: func(fvm *VM) { fvm.Push(v) }, Immediate: true})
+	vm.words = append(vm.words, Word{Run: func(fvm *VM) error { fvm.Push(v); return nil }, Immediate: false})
 	return uint16(len(vm.words) - 1)
 }
 
@@ -115,8 +118,7 @@ func (vm *VM) Run(r io.Reader, w io.Writer) error {
 	vm.Source = bufio.NewReader(r)
 	vm.Sink = bufio.NewWriter(w)
 	vm.Compiling = true
-	interpret(vm)
-	return vm.Err
+	return interpret(vm)
 }
 
 // ResetState recovers from an error and puts us in
@@ -124,5 +126,5 @@ func (vm *VM) Run(r io.Reader, w io.Writer) error {
 func (vm *VM) ResetState() {
 	vm.Stack = nil
 	vm.Rstack = nil
-	vm.Err = nil
+	vm.Compiling = true
 }

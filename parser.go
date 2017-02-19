@@ -2,7 +2,6 @@ package forth
 
 import (
 	"bufio"
-	"errors"
 	"io"
 	"strconv"
 	"unicode"
@@ -87,22 +86,21 @@ func processLiteral(s string) interface{} {
 
 // Interpret sets the compilation state of the VM to false, and
 // reads words one at a time...
-func interpret(vm *VM) {
+func interpret(vm *VM) (err error) {
 	if !vm.Compiling {
-		vm.Err = errors.New("can't interpret in interpret mode")
-		return
+		return ErrBadState
 	}
 
 	vm.Compiling = false
 	buf := make([]rune, 0, 20)
 
-	for (vm.Err == nil) && !vm.Compiling {
-		str, err := nextToken(vm, buf)
+	for (err == nil) && !vm.Compiling {
+		var str string
+		str, err = nextToken(vm, buf)
 		if err != nil {
 			if err == io.EOF {
 				err = nil
 			}
-			vm.Err = err
 			return
 		}
 
@@ -113,7 +111,8 @@ func interpret(vm *VM) {
 		if !ok {
 			vm.Push(processLiteral(str))
 		} else {
-			vm.words[idx].Run(vm)
+			err = vm.words[idx].Run(vm)
 		}
 	}
+	return
 }

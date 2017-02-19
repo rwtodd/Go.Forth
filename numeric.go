@@ -2,11 +2,10 @@ package forth
 
 import "strings"
 
-func add(vm *VM) {
+func add(vm *VM) (err error) {
 	top := len(vm.Stack) - 1
 	if top < 1 {
-		vm.Err = ErrUnderflow
-		return
+		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
 	case int:
@@ -16,7 +15,7 @@ func add(vm *VM) {
 		case float64:
 			vm.Stack[top-1] = float64(op1) + op2
 		default:
-			vm.Err = ErrArgument
+			err = ErrArgument
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -25,26 +24,26 @@ func add(vm *VM) {
 		case float64:
 			vm.Stack[top-1] = op1 + op2
 		default:
-			vm.Err = ErrArgument
+			err = ErrArgument
 		}
 	case string:
 		op2, ok := vm.Stack[top-1].(string)
 		if ok {
 			vm.Stack[top-1] = op2 + op1
 		} else {
-			vm.Err = ErrArgument
+			err = ErrArgument
 		}
 	default:
-		vm.Err = ErrArgument
+		err = ErrArgument
 	}
 	vm.Stack = vm.Stack[:top]
+	return
 }
 
-func multiply(vm *VM) {
+func multiply(vm *VM) (err error) {
 	top := len(vm.Stack) - 1
 	if top < 1 {
-		vm.Err = ErrUnderflow
-		return
+		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
 	case int:
@@ -56,7 +55,7 @@ func multiply(vm *VM) {
 		case string:
 			vm.Stack[top-1] = strings.Repeat(op2, op1)
 		default:
-			vm.Err = ErrArgument
+			err = ErrArgument
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -65,17 +64,18 @@ func multiply(vm *VM) {
 		case float64:
 			vm.Stack[top-1] = op1 * op2
 		default:
-			vm.Err = ErrArgument
+			err = ErrArgument
 		}
 	case string:
 		op2, ok := vm.Stack[top-1].(int)
 		if ok {
 			vm.Stack[top-1] = strings.Repeat(op1, op2)
 		} else {
-			vm.Err = ErrArgument
+			err = ErrArgument
 		}
 	default:
-		vm.Err = ErrArgument
+		err = ErrArgument
 	}
 	vm.Stack = vm.Stack[:top]
+	return
 }
