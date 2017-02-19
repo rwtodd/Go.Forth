@@ -58,7 +58,7 @@ func nextToken(vm *VM, buf []rune) (string, error) {
 	switch ch {
 	case '"':
 		str, err := vm.Source.ReadSlice('"')
-		return string(str), err
+		return string(str[:len(str)-1]), err
 	default:
 		buf = append(buf, ch)
 		buf, err = readTilWhitespace(vm.Source, buf)
