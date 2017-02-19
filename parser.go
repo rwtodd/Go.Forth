@@ -69,10 +69,19 @@ func nextToken(vm *VM, buf []rune) (string, error) {
 // processLiteral possibly turns a string into a number,
 // and maybe other literal forms if I want to do so later.
 func processLiteral(s string) interface{} {
+	// try to make an integer...
 	i, e := strconv.Atoi(s)
 	if e == nil {
 		return i
 	}
+
+	// try to make a float...
+	f, e := strconv.ParseFloat(s, 64)
+	if e == nil {
+		return f
+	}
+
+	// just return the string...
 	return s
 }
 

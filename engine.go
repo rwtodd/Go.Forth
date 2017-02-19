@@ -104,6 +104,7 @@ func NewVM() *VM {
 	ans.Define("swap", Word{swap, false})
 	ans.Define("over", Word{over, false})
 	ans.Define("+", Word{add, false})
+	ans.Define("*", Word{multiply, false})
 	return ans
 }
 
@@ -115,4 +116,12 @@ func (vm *VM) Run(r io.Reader, w io.Writer) error {
 	vm.Compiling = true
 	interpret(vm)
 	return vm.Err
+}
+
+// ResetState recovers from an error and puts us in
+// a known state to restart the interpreter
+func (vm *VM) ResetState() {
+	vm.Stack = nil
+	vm.Rstack = nil
+	vm.Err = nil
 }
