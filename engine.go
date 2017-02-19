@@ -2,7 +2,6 @@ package forth
 
 import (
 	"bufio"
-	"errors"
 	"io"
 )
 
@@ -61,7 +60,7 @@ func (vm *VM) Push(v interface{}) {
 func (vm *VM) Pop() (v interface{}) {
 	l := len(vm.Stack) - 1
 	if l < 0 {
-		vm.Err = errors.New("stack empty")
+		vm.Err = ErrUnderflow
 		return nil
 	}
 	v = vm.Stack[l]

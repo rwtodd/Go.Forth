@@ -16,5 +16,6 @@ func main() {
 			break
 		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n\n", vm.Err)
+		vm.ResetState()
 	}
 }
