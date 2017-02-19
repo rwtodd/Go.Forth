@@ -20,6 +20,11 @@ type VM struct {
 	Stack  []interface{} // the data stack
 	Rstack []interface{} // the return stack
 
+        codeseg []uint16     // where the code for composite (user-defined) words go
+	ip      int          // instruction pointer
+	curdef  Word         // the word we are currently defining
+	curname string       // the name of teh word we are defining
+
 	Source *bufio.Reader // our input
 	Sink   *bufio.Writer // out output
 
@@ -36,18 +41,24 @@ func (vm *VM) Define(name string, word Word) {
 
 // Forget removes words from the VM up to the
 // vm.marker.
-func forget(vm *VM) {
+func forget(vm *VM) error {
+	if len(vm.words) < int(vm.marker) {
+		return ErrBadState
+	}
+
 	for k, v := range vm.dict {
 		if v >= vm.marker {
 			delete(vm.dict, k)
 		}
 	}
 	vm.words = vm.words[:vm.marker]
+	return nil
 }
 
 // Mark sets the marker for a future call to Forget
-func mark(vm *VM) {
+func mark(vm *VM) error {
 	vm.marker = uint16(len(vm.words))
+	return nil
 }
 
 // Push a value onto the stack
@@ -109,6 +120,8 @@ func NewVM() *VM {
 	ans.Define("-rot", Word{minusRotate, false})
 	ans.Define("+", Word{add, false})
 	ans.Define("*", Word{multiply, false})
+	ans.Define("mark", Word{mark, false})
+	ans.Define("forget", Word{forget, false})
 	return ans
 }
 

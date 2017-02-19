@@ -116,3 +116,36 @@ func interpret(vm *VM) (err error) {
 	}
 	return
 }
+
+func compile(vm *VM) (err error) {
+ 	if vm.Compiling {
+		return ErrBadState
+	}
+
+	vm.Compiling = true
+		
+	buf := make([]rune, 0, 20)
+
+	for (err == nil) && !vm.Compiling {
+		var str string
+		str, err = nextToken(vm, buf)
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return
+		}
+
+		// lookup the string in the dictionary
+		idx, ok := vm.dict[str]
+
+		// if it's not there, put it on the stack as a literal
+		if !ok {
+			vm.Push(processLiteral(str))
+		} else {
+			err = vm.words[idx].Run(vm)
+		}
+	}
+	return
+
+}
