@@ -11,4 +11,7 @@ var (
 
 	// ErrArgument reports a bad argument to an operation
 	ErrArgument = errors.New("bad argument")
+
+	// ErrRStackUnderflow reports when the Rstack is too low
+	ErrRStackUnderflow = errors.New("r-stack underflow")
 )

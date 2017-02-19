@@ -20,10 +20,10 @@ type VM struct {
 	Stack  []interface{} // the data stack
 	Rstack []interface{} // the return stack
 
-        codeseg []uint16     // where the code for composite (user-defined) words go
-	ip      int          // instruction pointer
-	curdef  Word         // the word we are currently defining
-	curname string       // the name of teh word we are defining
+	codeseg []uint16 // where the code for composite (user-defined) words go
+	ip      int      // instruction pointer
+	curdef  int      // the start-index of the word we are currently defining
+	curname string   // the name of teh word we are defining
 
 	Source *bufio.Reader // our input
 	Sink   *bufio.Writer // out output
@@ -109,10 +109,14 @@ func NewVM() *VM {
 		dict:      make(map[string]uint16),
 		Compiling: true,
 	}
+	ans.Define("(RET)", Word{nil, false}) // SPECIAL... must be opcode 0
 	ans.Define(".s", Word{printStack, false})
 	ans.Define(".", Word{printTop, false})
 	ans.Define("[", Word{interpret, true})
 	ans.Define("]", Word{stopInterpret, false})
+	ans.Define(":", Word{compile, false})
+	ans.Define(";", Word{stopCompile, true})
+	ans.Define("immediate", Word{makeImmediate, false})
 	ans.Define("dup", Word{dup, false})
 	ans.Define("drop", Word{drop, false})
 	ans.Define("swap", Word{swap, false})
@@ -141,4 +145,7 @@ func (vm *VM) ResetState() {
 	vm.Stack = nil
 	vm.Rstack = nil
 	vm.Compiling = true
+	vm.curdef = 0
+	vm.curname = ""
+	vm.ip = 0
 }
