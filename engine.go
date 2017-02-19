@@ -111,7 +111,8 @@ func NewVM() *VM {
 	}
 	ans.Define(".s", Word{printStack, false})
 	ans.Define(".", Word{printTop, false})
-	ans.Define("[", Word{interpret, false})
+	ans.Define("[", Word{interpret, true})
+	ans.Define("]", Word{stopInterpret, false})
 	ans.Define("dup", Word{dup, false})
 	ans.Define("drop", Word{drop, false})
 	ans.Define("swap", Word{swap, false})

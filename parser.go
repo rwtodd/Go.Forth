@@ -84,6 +84,17 @@ func processLiteral(s string) interface{} {
 	return s
 }
 
+
+// stopInterpret completes an interpretation and falls back to the compiler
+// (assuming one was in play
+func stopInterpret(vm *VM) error {
+	if vm.Compiling {
+		return ErrBadState
+	}
+	vm.Compiling = true
+	return nil
+}
+
 // Interpret sets the compilation state of the VM to false, and
 // reads words one at a time...
 func interpret(vm *VM) (err error) {
