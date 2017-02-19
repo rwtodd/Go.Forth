@@ -103,6 +103,8 @@ func NewVM() *VM {
 	ans.Define("drop", Word{drop, false})
 	ans.Define("swap", Word{swap, false})
 	ans.Define("over", Word{over, false})
+	ans.Define("rot", Word{rotate, false})
+	ans.Define("-rot", Word{minusRotate, false})
 	ans.Define("+", Word{add, false})
 	ans.Define("*", Word{multiply, false})
 	return ans
