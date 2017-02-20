@@ -130,9 +130,13 @@ func NewVM() *VM {
 	ans.Define("(", Word{parenComment, true})
 	ans.Define("read", Word{read, false})
 	ans.Define("skip", Word{skip, false})
-	
+	ans.Define("\"", Word{openQuote, true})
+	ans.Define("chr", Word{chrFromInt, false})
+	ans.Define("ord", Word{ordFromStr, false})
 	ans.Define(".s", Word{printStack, false})
 	ans.Define(".", Word{printTop, false})
+	ans.Define("type", Word{printStr, false})
+
 	ans.Define("[", Word{interpret, true})
 	ans.Define("]", Word{stopInterpret, false})
 	ans.Define(":", Word{compile, false})

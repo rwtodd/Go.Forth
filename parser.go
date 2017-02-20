@@ -1,11 +1,9 @@
 package forth
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"strconv"
-	"unicode"
 )
 
 // CompositeWord represents a word made up of opcodes for other defined words
@@ -48,120 +46,6 @@ func (c CompositeWord) Run(vm *VM) error {
 	return nil
 }
 
-// eatWhitespace skips whitespace and returns the next
-// non-whitespace char
-func eatWhitespace(r *bufio.Reader) (rune, error) {
-	var (
-		ch  rune
-		err error
-	)
-
-	for err == nil {
-		ch, _, err = r.ReadRune()
-		if (err != nil) || !unicode.IsSpace(ch) {
-			return ch, err
-		}
-	}
-
-	return 'X', nil
-}
-
-// readTilWhitespace reads from r until whitespace is found,
-// filling the provided buf as it goes.
-func readTilWhitespace(r *bufio.Reader, buf []rune) ([]rune, error) {
-	var (
-		ch  rune
-		err error
-	)
-
-	for err == nil {
-		ch, _, err = r.ReadRune()
-		if (err != nil) || unicode.IsSpace(ch) {
-			break
-		}
-		buf = append(buf, ch)
-	}
-
-	// EOF isn't really a problem for this function
-	if err == io.EOF {
-		err = nil
-	}
-	return buf, err
-}
-
-// read reads from the vm's `source` until the delimiter (when considered 
-// as a rune) on the top of the stack is found.  It leaves the string
-// read on the top of the stack.
-func read(vm *VM) error {
-	var (
-		ch  rune
-		err error
-	)
-
-	delimStack, err := vm.Pop() 
-	if err != nil {
-		return err
-	}
-
-	delimInt, ok := delimStack.(int)	
-	if !ok {
-		return ErrArgument
-	}
-
-	delim := rune(delimInt)
-	buf := make([]rune,0,20)
-
-	for err == nil {
-		ch, _, err = vm.Source.ReadRune()
-		if (err != nil) || (ch == delim) {
-			break
-		}
-		buf = append(buf, ch)
-	}
-
-	// EOF isn't really a problem for this function
-	if err == io.EOF {
-		err = nil
-	}
-	vm.Push(string(buf))
-	return err
-}
-
-// skip reads from the vm's `source` until the delimiter (when considered 
-// as a rune) on the top of the stack is found.  The runes read are not
-// preserved.
-func skip(vm *VM) error {
-	var (
-		ch  rune
-		err error
-	)
-
-	delimStack, err := vm.Pop() 
-	if err != nil {
-		return err
-	}
-
-	delimInt, ok := delimStack.(int)	
-	if !ok {
-		return ErrArgument
-	}
-
-	delim := rune(delimInt)
-
-	for err == nil {
-		ch, _, err = vm.Source.ReadRune()
-		if (err != nil) || (ch == delim) {
-			break
-		}
-	}
-
-	// EOF isn't really a problem for this function
-	if err == io.EOF {
-		err = nil
-	}
-	return err
-}
-
 // parenComment '(' skips until the closing paren.
 // : ( ')' skip ; immediate
 func parenComment(vm *VM) error {
@@ -182,20 +66,14 @@ func nextToken(vm *VM, buf []rune) (string, error) {
 		return "", err
 	}
 
-	switch ch {
-	case '"':
-		str, err := vm.Source.ReadSlice('"')
-		return string(str[:len(str)-1]), err
-	default:
-		buf = append(buf, ch)
-		buf, err = readTilWhitespace(vm.Source, buf)
-	}
+	buf = append(buf, ch)
+	buf, err = delimitedWSRead(vm.Source, buf)
 	return string(buf), err
 }
 
-// processLiteral possibly turns a string into a number,
+// decodeLiteral possibly turns a string into a number,
 // and maybe other literal forms if I want to do so later.
-func processLiteral(s string) interface{} {
+func decodeLiteral(s string) interface{} {
 	// try to make an integer...
 	i, e := strconv.Atoi(s)
 	if e == nil {
@@ -247,7 +125,7 @@ func interpret(vm *VM) (err error) {
 
 		// if it's not there, put it on the stack as a literal
 		if !ok {
-			vm.Push(processLiteral(str))
+			vm.Push(decodeLiteral(str))
 		} else {
 			err = vm.words[idx].Run(vm)
 		}
@@ -306,7 +184,7 @@ func compile(vm *VM) (err error) {
 
 		if !ok {
 			// if it's not there, compile it in as a literal
-			compileLiteral(vm, processLiteral(str))
+			compileLiteral(vm, decodeLiteral(str))
 		} else {
 			// otherwise, compile in the word unless it's immediate
 			if vm.words[idx].Immediate {

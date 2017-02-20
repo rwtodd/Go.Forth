@@ -16,7 +16,7 @@ func TestAdd(t *testing.T) {
 		t.Fail()
 	}
 	vm.ResetState()
-	tprog = strings.NewReader(`"hi" " there" +`)
+	tprog = strings.NewReader(`" hi" "  there" +`)
 	if err := vm.Run(tprog, ioutil.Discard); err != nil {
 		t.Error(err)
 	}
@@ -35,7 +35,7 @@ func TestMul(t *testing.T) {
 		t.Fail()
 	}
 	vm.ResetState()
-	tprog = strings.NewReader(`"hi" 3 *  3 "yo" *`)
+	tprog = strings.NewReader(`" hi" 3 *  3 " yo" *`)
 	if err := vm.Run(tprog, ioutil.Discard); err != nil {
 		t.Error(err)
 	}
