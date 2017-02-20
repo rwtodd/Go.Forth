@@ -8,9 +8,10 @@ import (
 // define a few constant opcodes that are reliable
 // so we don't have to look them up all the time
 const (
-   opReturn   = iota
-   opLitINT
-   opLitUINT
+	opReturn = iota
+	opLitINT
+	opLitUINT
+	opCompileComma
 )
 
 // A Word in forth is an operation on the VM
@@ -117,9 +118,14 @@ func NewVM() *VM {
 		dict:      make(map[string]uint16),
 		Compiling: true,
 	}
-	ans.Define("(RET)", Word{nil, false})        // SPECIAL... must be opcode 0
-	ans.Define("(litINT)", Word{litINT, false})  // SPECIAL... must be opcode 1
-	ans.Define("(litUINT)", Word{litUINT, false}) // SPECIAL... must be opcode 2 
+
+	// SPECIAL... must be specific opcodes to match constants
+	ans.Define("(RET)", Word{nil, false})
+	ans.Define("(litINT)", Word{litINT, false})
+	ans.Define("(litUINT)", Word{litUINT, false})
+	ans.Define("compile,", Word{compileComma, false})
+	// END SPECIALS
+
 	ans.Define(".s", Word{printStack, false})
 	ans.Define(".", Word{printTop, false})
 	ans.Define("[", Word{interpret, true})
@@ -127,6 +133,7 @@ func NewVM() *VM {
 	ans.Define(":", Word{compile, false})
 	ans.Define(";", Word{stopCompile, true})
 	ans.Define("literal", Word{literal, true})
+	ans.Define("postpone", Word{postpone, true})
 	ans.Define("immediate", Word{makeImmediate, false})
 	ans.Define("dup", Word{dup, false})
 	ans.Define("drop", Word{drop, false})

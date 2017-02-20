@@ -2,6 +2,7 @@ package forth
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strconv"
 	"unicode"
@@ -234,51 +235,100 @@ func compile(vm *VM) (err error) {
 // (litINT) reads the next 16-bits from the codeseg and pushes that number on the stack as an int
 // The 16 bits are considered signed
 func litINT(vm *VM) error {
-   vm.ip++
-   num := int16(vm.codeseg[vm.ip])
-   vm.Stack = append(vm.Stack, int(num)) 
-   return nil
+	vm.ip++
+	num := int16(vm.codeseg[vm.ip])
+	vm.Stack = append(vm.Stack, int(num))
+	return nil
 }
 
 // (litUINT) reads the next 16-bits from the codeseg and pushes that number on the stack as an int
 // The 16 bits are considered unsigned
 func litUINT(vm *VM) error {
-   vm.ip++
-   num := vm.codeseg[vm.ip]
-   vm.Stack = append(vm.Stack, int(num)) 
-   return nil
+	vm.ip++
+	num := vm.codeseg[vm.ip]
+	vm.Stack = append(vm.Stack, int(num))
+	return nil
 }
 
 // compileLiteral is a helper function to put a literal into the compiled
 // codestream. This will be the one place we'll have to add code to have more
 // special types that don't just go to CreatePusher()
 func compileLiteral(vm *VM, value interface{}) {
-   switch num := value.(type) {
-   case int:
-	switch {
-	case (num >= -32768) && (num < 32768): 
-		vm.codeseg = append(vm.codeseg, opLitINT, uint16(num))
-	case (num >= 0) && (num < 65536):
-		vm.codeseg = append(vm.codeseg, opLitUINT, uint16(num))
+	switch num := value.(type) {
+	case int:
+		switch {
+		case (num >= -32768) && (num < 32768):
+			vm.codeseg = append(vm.codeseg, opLitINT, uint16(num))
+		case (num >= 0) && (num < 65536):
+			vm.codeseg = append(vm.codeseg, opLitUINT, uint16(num))
+		default:
+			vm.codeseg = append(vm.codeseg, vm.CreatePusher(num))
+		}
 	default:
-		vm.codeseg = append(vm.codeseg, vm.CreatePusher(num))
+		vm.codeseg = append(vm.codeseg, vm.CreatePusher(value))
 	}
-   default:
-	vm.codeseg = append(vm.codeseg, vm.CreatePusher(value))
-   }
 }
 
 // literal is an immediate word that reads an int from the stack and compiles it into the codestream
 // if possible, and uses a pusher if necessary.
 func literal(vm *VM) (err error) {
-   var value interface{} 
-   value, err = vm.Pop()
-   if err != nil {
+	if !vm.Compiling {
+		return ErrBadState
+	}
+	var value interface{}
+	value, err = vm.Pop()
+	if err != nil {
+		return
+	}
+	compileLiteral(vm, value)
 	return
-   }
-   compileLiteral(vm,value)
-   return
+}
+
+// compileComma takes the top of the stack and puts that opcode literally
+// into the code sequence.
+func compileComma(vm *VM) error {
+	value, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	num, ok := value.(int)
+	if !ok || (num < 0) || (num > len(vm.words)) {
+		return ErrArgument
+	}
+
+	vm.codeseg = append(vm.codeseg, uint16(num))
+	return nil
 }
 
 // postpone creates code that compiles code into the caller.  For
-// immediates, it creates code that calls code in the caller. 
+// immediates, it creates code that calls code in the caller.
+func postpone(vm *VM) error {
+	if !vm.Compiling {
+		return ErrBadState
+	}
+
+	buf := make([]rune, 0, 20)
+
+	// STEP 1: read the name and look it up
+	str, err := nextToken(vm, buf)
+	if err != nil {
+		return err
+	}
+
+	opcode, ok := vm.dict[str]
+	if !ok {
+		return fmt.Errorf("POSTPONE: no word <%s>", str)
+	}
+
+	// STEP 2: generate the code
+	if vm.words[opcode].Immediate {
+		// just call the immediate in the caller when it runs
+		vm.codeseg = append(vm.codeseg, opcode)
+	} else {
+		// need to compile a sequence to compile the opcode into the caller's caller
+		vm.codeseg = append(vm.codeseg, opLitUINT, opcode, opCompileComma)
+	}
+
+	return nil
+}

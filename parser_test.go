@@ -25,4 +25,3 @@ func TestLiterals(t *testing.T) {
 		t.Fail()
 	}
 }
-
