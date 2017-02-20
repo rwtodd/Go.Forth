@@ -30,7 +30,7 @@ func (c CompositeWord) Run(vm *VM) error {
 	// run the internal words
 	for {
 		idx := vm.codeseg[vm.ip]
-		if idx == 0 {
+		if idx == opReturn {
 			break
 		}
 		vm.words[idx].Run(vm)
@@ -179,7 +179,7 @@ func stopCompile(vm *VM) error {
 		return ErrBadState
 	}
 	vm.Compiling = false
-	vm.codeseg = append(vm.codeseg, 0) // put a (RET)
+	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
 	// create a composite word out of the current definition
 	cw := CompositeWord{start: vm.curdef}
@@ -218,7 +218,7 @@ func compile(vm *VM) (err error) {
 
 		if !ok {
 			// if it's not there, compile it in as a literal
-			vm.codeseg = append(vm.codeseg, vm.CreatePusher(processLiteral(str)))
+			compileLiteral(vm, processLiteral(str))
 		} else {
 			// otherwise, compile in the word unless it's immediate
 			if vm.words[idx].Immediate {
@@ -230,3 +230,55 @@ func compile(vm *VM) (err error) {
 	}
 	return
 }
+
+// (litINT) reads the next 16-bits from the codeseg and pushes that number on the stack as an int
+// The 16 bits are considered signed
+func litINT(vm *VM) error {
+   vm.ip++
+   num := int16(vm.codeseg[vm.ip])
+   vm.Stack = append(vm.Stack, int(num)) 
+   return nil
+}
+
+// (litUINT) reads the next 16-bits from the codeseg and pushes that number on the stack as an int
+// The 16 bits are considered unsigned
+func litUINT(vm *VM) error {
+   vm.ip++
+   num := vm.codeseg[vm.ip]
+   vm.Stack = append(vm.Stack, int(num)) 
+   return nil
+}
+
+// compileLiteral is a helper function to put a literal into the compiled
+// codestream. This will be the one place we'll have to add code to have more
+// special types that don't just go to CreatePusher()
+func compileLiteral(vm *VM, value interface{}) {
+   switch num := value.(type) {
+   case int:
+	switch {
+	case (num >= -32768) && (num < 32768): 
+		vm.codeseg = append(vm.codeseg, opLitINT, uint16(num))
+	case (num >= 0) && (num < 65536):
+		vm.codeseg = append(vm.codeseg, opLitUINT, uint16(num))
+	default:
+		vm.codeseg = append(vm.codeseg, vm.CreatePusher(num))
+	}
+   default:
+	vm.codeseg = append(vm.codeseg, vm.CreatePusher(value))
+   }
+}
+
+// literal is an immediate word that reads an int from the stack and compiles it into the codestream
+// if possible, and uses a pusher if necessary.
+func literal(vm *VM) (err error) {
+   var value interface{} 
+   value, err = vm.Pop()
+   if err != nil {
+	return
+   }
+   compileLiteral(vm,value)
+   return
+}
+
+// postpone creates code that compiles code into the caller.  For
+// immediates, it creates code that calls code in the caller. 

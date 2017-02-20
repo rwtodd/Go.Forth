@@ -5,6 +5,14 @@ import (
 	"io"
 )
 
+// define a few constant opcodes that are reliable
+// so we don't have to look them up all the time
+const (
+   opReturn   = iota
+   opLitINT
+   opLitUINT
+)
+
 // A Word in forth is an operation on the VM
 type Word struct {
 	Run       func(*VM) error
@@ -109,13 +117,16 @@ func NewVM() *VM {
 		dict:      make(map[string]uint16),
 		Compiling: true,
 	}
-	ans.Define("(RET)", Word{nil, false}) // SPECIAL... must be opcode 0
+	ans.Define("(RET)", Word{nil, false})        // SPECIAL... must be opcode 0
+	ans.Define("(litINT)", Word{litINT, false})  // SPECIAL... must be opcode 1
+	ans.Define("(litUINT)", Word{litUINT, false}) // SPECIAL... must be opcode 2 
 	ans.Define(".s", Word{printStack, false})
 	ans.Define(".", Word{printTop, false})
 	ans.Define("[", Word{interpret, true})
 	ans.Define("]", Word{stopInterpret, false})
 	ans.Define(":", Word{compile, false})
 	ans.Define(";", Word{stopCompile, true})
+	ans.Define("literal", Word{literal, true})
 	ans.Define("immediate", Word{makeImmediate, false})
 	ans.Define("dup", Word{dup, false})
 	ans.Define("drop", Word{drop, false})
