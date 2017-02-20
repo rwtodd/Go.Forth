@@ -89,6 +89,93 @@ func readTilWhitespace(r *bufio.Reader, buf []rune) ([]rune, error) {
 	return buf, err
 }
 
+// read reads from the vm's `source` until the delimiter (when considered 
+// as a rune) on the top of the stack is found.  It leaves the string
+// read on the top of the stack.
+func read(vm *VM) error {
+	var (
+		ch  rune
+		err error
+	)
+
+	delimStack, err := vm.Pop() 
+	if err != nil {
+		return err
+	}
+
+	delimInt, ok := delimStack.(int)	
+	if !ok {
+		return ErrArgument
+	}
+
+	delim := rune(delimInt)
+	buf := make([]rune,0,20)
+
+	for err == nil {
+		ch, _, err = vm.Source.ReadRune()
+		if (err != nil) || (ch == delim) {
+			break
+		}
+		buf = append(buf, ch)
+	}
+
+	// EOF isn't really a problem for this function
+	if err == io.EOF {
+		err = nil
+	}
+	vm.Push(string(buf))
+	return err
+}
+
+// skip reads from the vm's `source` until the delimiter (when considered 
+// as a rune) on the top of the stack is found.  The runes read are not
+// preserved.
+func skip(vm *VM) error {
+	var (
+		ch  rune
+		err error
+	)
+
+	delimStack, err := vm.Pop() 
+	if err != nil {
+		return err
+	}
+
+	delimInt, ok := delimStack.(int)	
+	if !ok {
+		return ErrArgument
+	}
+
+	delim := rune(delimInt)
+
+	for err == nil {
+		ch, _, err = vm.Source.ReadRune()
+		if (err != nil) || (ch == delim) {
+			break
+		}
+	}
+
+	// EOF isn't really a problem for this function
+	if err == io.EOF {
+		err = nil
+	}
+	return err
+}
+
+// parenComment '(' skips until the closing paren.
+// : ( ')' skip ; immediate
+func parenComment(vm *VM) error {
+	vm.Push(int(')'))
+	return skip(vm)
+}
+
+// nlComment '\' skips until the next newline
+// : \ '\n' skip ; immediate
+func nlComment(vm *VM) error {
+	vm.Push(int('\n'))
+	return skip(vm)
+}
+
 func nextToken(vm *VM, buf []rune) (string, error) {
 	ch, err := eatWhitespace(vm.Source)
 	if err != nil {

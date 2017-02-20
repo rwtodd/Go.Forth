@@ -126,6 +126,11 @@ func NewVM() *VM {
 	ans.Define("compile,", Word{compileComma, false})
 	// END SPECIALS
 
+	ans.Define("\\", Word{nlComment, true})
+	ans.Define("(", Word{parenComment, true})
+	ans.Define("read", Word{read, false})
+	ans.Define("skip", Word{skip, false})
+	
 	ans.Define(".s", Word{printStack, false})
 	ans.Define(".", Word{printTop, false})
 	ans.Define("[", Word{interpret, true})
