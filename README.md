@@ -1,24 +1,29 @@
 # Forth
 An embeddable postfix mini-language for my Go programs.
 
-## Is it a true FORTH?
+## Is it a true ANS FORTH?
 
 No, because I did not want to simulate a raw memory space, which would
 complicate interactions between the language and Go.  So, instead,
 I make the stack and all variables of garbage-collected type `interface{}`,
-and provide lexers and overloads so you can say stuff like:
+and provide overloads so you can say stuff like:
 
 ~~~~~~
-4 1.2 * .
+4 1.2 * .  ( '*' can multiply an int with a float )
 4.8
 
-"hi" dup + .
+: double dup + ;
+
+3 double . 
+6
+
+" hi" double .  ( '+' works on strings )
 hihi
 ~~~~~~
 
 Similarly, I won't have words like `c,` to push raw data into a data segment.
 
-Otherwise, though, it should feel pretty FORTH-y, with immediate words 
+Otherwise, though, it should feel pretty FORTHy, with immediate words 
 and `POSTPONE` letting you do compile-time programming.
 
 ## Is it fast?
@@ -33,11 +38,19 @@ always be provided from the Go side of the wall.
 This is just preliminary work.  Words implemented:
 
 ~~~~~~
-.s . [ dup drop swap over rot -rot + * 
+\ ( read skip " chr ord .s . type
+[ ] : ; literal postpone immediate 
+dup drop swap over rot -rot + * mark 
+forget
 ~~~~~~
 
-Not that, importantly, I don't even have the colon `:` implemented yet
-to define new words.
+At this point, you can define custom words, which can include
+immediate ("macro"-type words) which use `postpone`. 
+
+The big missing feature is conditionals and loops.  Those will
+be implemented next.  At some point I plan to incorporate a 
+pre-parsed block of forth code to implement the rest of the high-level
+features.  I believe this is a typical implementation technique.
 
 ## Prior Work
 
