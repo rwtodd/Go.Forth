@@ -61,6 +61,28 @@ func TestOver(t *testing.T) {
 	}
 }
 
+func TestNip(t *testing.T) {
+	vm.ResetState()
+	var tprog = strings.NewReader("1 2 3 nip 4 nip 5 nip")
+	if err := vm.Run(tprog, ioutil.Discard); err != nil {
+		t.Error(err)
+	}
+	if !stackEq(1, 5) {
+		t.Fail()
+	}
+}
+
+func TestTuck(t *testing.T) {
+	vm.ResetState()
+	var tprog = strings.NewReader("1 2 tuck 3 tuck 4 tuck")
+	if err := vm.Run(tprog, ioutil.Discard); err != nil {
+		t.Error(err)
+	}
+	if !stackEq(2, 1, 3, 2, 4, 3, 4) {
+		t.Fail()
+	}
+}
+
 func TestDrop(t *testing.T) {
 	vm.ResetState()
 	var tprog = strings.NewReader("2 3 drop")

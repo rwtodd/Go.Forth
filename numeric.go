@@ -2,6 +2,7 @@ package forth
 
 import "strings"
 
+// : + ( a b -- a+b ) <code>
 func add(vm *VM) (err error) {
 	top := len(vm.Stack) - 1
 	if top < 1 {
@@ -40,6 +41,7 @@ func add(vm *VM) (err error) {
 	return
 }
 
+// : * ( a b -- a*b ) <code>
 func multiply(vm *VM) (err error) {
 	top := len(vm.Stack) - 1
 	if top < 1 {
@@ -78,4 +80,10 @@ func multiply(vm *VM) (err error) {
 	}
 	vm.Stack = vm.Stack[:top]
 	return
+}
+
+// numWordsInit adds numeric core words to the VM
+func numWordsInit(vm *VM) {
+	vm.Define("+", Word{add, false})
+	vm.Define("*", Word{multiply, false})
 }

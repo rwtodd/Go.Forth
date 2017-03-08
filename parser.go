@@ -297,3 +297,15 @@ func postpone(vm *VM) error {
 
 	return nil
 }
+
+func parseWordsInit(vm *VM) {
+	vm.Define("\\", Word{nlComment, true})
+	vm.Define("(", Word{parenComment, true})
+	vm.Define("[", Word{interpret, true})
+	vm.Define("]", Word{stopInterpret, false})
+	vm.Define(":", Word{compile, false})
+	vm.Define(";", Word{stopCompile, true})
+	vm.Define("literal", Word{literal, true})
+	vm.Define("postpone", Word{postpone, true})
+	vm.Define("immediate", Word{makeImmediate, false})
+}
