@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"unicode"
 )
 
 // CompositeWord represents a word made up of opcodes for other defined words
@@ -67,27 +68,33 @@ func nextToken(vm *VM, buf []rune) (string, error) {
 	}
 
 	buf = append(buf, ch)
-	buf, err = delimitedWSRead(vm.Source, buf)
+	if buf, err = delimitedWSRead(vm.Source, buf); err == nil {
+		// convert the buffer to lowercase
+		for i, r := range buf {
+			buf[i] = unicode.ToLower(r)
+		}
+	}
+
 	return string(buf), err
 }
 
 // decodeLiteral possibly turns a string into a number,
 // and maybe other literal forms if I want to do so later.
-func decodeLiteral(s string) interface{} {
+func decodeLiteral(s string) (interface{}, error) {
 	// try to make an integer...
 	i, e := strconv.Atoi(s)
 	if e == nil {
-		return i
+		return i, e
 	}
 
 	// try to make a float...
 	f, e := strconv.ParseFloat(s, 64)
 	if e == nil {
-		return f
+		return f, e
 	}
 
-	// just return the string...
-	return s
+	// we can't tell what this token is!
+	return nil, fmt.Errorf("unknown token <%s>", s)
 }
 
 // stopInterpret completes an interpretation and falls back to the compiler
@@ -121,13 +128,14 @@ func interpret(vm *VM) (err error) {
 		}
 
 		// lookup the string in the dictionary
-		idx, ok := vm.dict[str]
-
-		// if it's not there, put it on the stack as a literal
-		if !ok {
-			vm.Push(decodeLiteral(str))
-		} else {
+		if idx, ok := vm.dict[str]; ok {
 			err = vm.words[idx].Run(vm)
+		} else {
+			// if it's not there, put it on the stack as a literal
+			var lit interface{}
+			if lit, err = decodeLiteral(str); err == nil {
+				vm.Push(lit)
+			}
 		}
 	}
 	return
@@ -180,17 +188,18 @@ func compile(vm *VM) (err error) {
 		}
 
 		// lookup the string in the dictionary
-		idx, ok := vm.dict[str]
-
-		if !ok {
-			// if it's not there, compile it in as a literal
-			compileLiteral(vm, decodeLiteral(str))
-		} else {
-			// otherwise, compile in the word unless it's immediate
+		if idx, ok := vm.dict[str]; ok {
+			// compile in the word unless it's immediate
 			if vm.words[idx].Immediate {
 				err = vm.words[idx].Run(vm)
 			} else {
 				vm.codeseg = append(vm.codeseg, idx)
+			}
+		} else {
+			// if it's not in the dict, compile it in as a literal
+			var lit interface{}
+			if lit, err = decodeLiteral(str); err == nil {
+				compileLiteral(vm, lit)
 			}
 		}
 	}

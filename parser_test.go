@@ -25,3 +25,14 @@ func TestLiterals(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestUpCase(t *testing.T) {
+	vm.ResetState()
+	var tprog = strings.NewReader(`: TST 3 4 sWaP ; tst`)
+	if err := vm.Run(tprog, ioutil.Discard); err != nil {
+		t.Error(err)
+	}
+	if !stackEq(4, 3) {
+		t.Fail()
+	}
+}
