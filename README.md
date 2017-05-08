@@ -4,12 +4,12 @@ An embeddable postfix mini-language for my Go programs.
 ## Is it a true ANS FORTH?
 
 No, because I did not want to simulate a raw memory space, which would
-complicate interactions between the language and Go.  So, instead,
-I make the stack and all variables of garbage-collected type `interface{}`,
-and provide overloads so you can say stuff like:
+complicate interactions between the language and Go.  So, instead, I
+make the stack and all variables of garbage-collected type
+`interface{}`, and provide overloads so you can say stuff like:
 
 ~~~~~~
-4 1.2 * .  ( '*' can multiply an int with a float )
+4 1.2 \* .  ( '\*' can multiply an int with a float )
 4.8
 
 : double dup + ;
@@ -47,16 +47,16 @@ forget
 At this point, you can define custom words, which can include
 immediate ("macro"-type words) which use `postpone`. 
 
-The big missing feature is conditionals and loops.  Those will
-be implemented next.  At some point I plan to incorporate a 
-pre-parsed block of forth code to implement the rest of the high-level
-features.  I believe this is a typical implementation technique.
+The big missing feature is conditionals and loops.  Those will be
+implemented next.  At some point I plan to incorporate a pre-parsed
+block of forth code to implement the rest of the high-level features.  I
+believe this is a typical implementation technique.
 
 ## Prior Work
 
 I had written a java-based FORTH interpreter a while back (it lives in
-the [small-programs](https://github.com/rwtodd/small_programs) repo). For that
-one, I __did__ simulate a flat memory space, and the result was much closer to
-an ANS FORTH implementation -- or at least it could eventually be one.  For this 
-interpreter, the goals are different.
+the [small-programs](https://github.com/rwtodd/small_programs) repo).
+For that one, I __did__ simulate a flat memory space, and the result was
+much closer to an ANS FORTH implementation -- or at least it could
+eventually be one.  For this interpreter, the goals are different.
 

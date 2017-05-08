@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	forth "github.com/rwtodd/Go.Forth"
+	"github.com/rwtodd/Go.Forth/forth"
 )
 
 func main() {
