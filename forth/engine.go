@@ -12,6 +12,8 @@ const (
 	opLitINT
 	opLitUINT
 	opCompileComma
+	opBranch
+	opBZR
 )
 
 // A Word in forth is an operation on the VM
@@ -124,8 +126,11 @@ func NewVM() *VM {
 	ans.Define("(litINT)", Word{litINT, false})
 	ans.Define("(litUINT)", Word{litUINT, false})
 	ans.Define("compile,", Word{compileComma, false})
+	ans.Define("(branch)", Word{branchUnconditional, false})
+	ans.Define("(bzr)", Word{branchZero, false})
 	// END SPECIALS
 
+	branchWordsInit(ans)
 	stackWordsInit(ans)
 	ioWordsInit(ans)
 	parseWordsInit(ans)

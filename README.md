@@ -41,16 +41,23 @@ This is just preliminary work.  Words implemented:
 \ ( read skip " chr ord .s . type
 [ ] : ; literal postpone immediate 
 dup drop swap over rot -rot + * mark 
-forget
+forget if else then recur
 ~~~~~~
 
 At this point, you can define custom words, which can include
 immediate ("macro"-type words) which use `postpone`. 
 
-The big missing feature is conditionals and loops.  Those will be
-implemented next.  At some point I plan to incorporate a pre-parsed
-block of forth code to implement the rest of the high-level features.  I
-believe this is a typical implementation technique.
+As of Sept 2018, we have IF/ELSE/THEN, and a RECUR word. With these,
+one can produce loops:
+
+~~~~~~
+: repeat " HELLO! " . -1 + dup IF recur ELSE drop THEN ;
+5 repeat
+HELLO!  HELLO!  HELLO!  HELLO!  HELLO! 
+~~~~~~
+
+Next we need more advanced looping constructs (like DO).  Those will be
+implemented next.
 
 ## Prior Work
 
