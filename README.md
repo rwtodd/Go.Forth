@@ -9,13 +9,7 @@ make the stack and all variables of garbage-collected type
 `interface{}`, and provide overloads so you can say stuff like:
 
 ~~~~~~
-4 1.2 \* .  ( '\*' can multiply an int with a float )
-4.8
-
 : double dup + ;
-
-3 double . 
-6
 
 " hi" double .  ( '+' works on strings )
 hihi
@@ -38,26 +32,43 @@ always be provided from the Go side of the wall.
 This is just preliminary work.  Words implemented:
 
 ~~~~~~
-\ ( read skip " chr ord .s . type
+\ ( read skip " chr ord .s . type cr
 [ ] : ; literal postpone immediate 
 dup drop swap over rot -rot + * mark 
-forget if else then recur
+forget if else then recur  >r r> r@ rdrop
+do loop +loop i j
 ~~~~~~
 
 At this point, you can define custom words, which can include
 immediate ("macro"-type words) which use `postpone`. 
 
-As of Sept 2018, we have IF/ELSE/THEN, and a RECUR word. With these,
-one can produce loops:
+As of Sept 2018, we have IF/ELSE/THEN, RECUR, and DO loops.
 
 ~~~~~~
-: repeat " HELLO! " . -1 + dup IF recur ELSE drop THEN ;
-5 repeat
+: block ( size -- ) 
+  0 swap tuck 0 DO over over DO j type i .  LOOP cr LOOP drop drop ;
+: blocks ( num -- ) 
+  0 DO   i block  LOOP ;
+5 blocks
+00
+00 01
+10 11
+00 01 02
+10 11 12
+20 21 22
+00 01 02 03
+10 11 12 13
+20 21 22 23
+30 31 32 33
+
+: regreet ( num -- ) " HELLO! " . -1 + dup IF recur ELSE drop THEN ;
+5 regreet
 HELLO!  HELLO!  HELLO!  HELLO!  HELLO! 
 ~~~~~~
 
-Next we need more advanced looping constructs (like DO).  Those will be
-implemented next.
+At this point, it's actually starting to be useful to embed in things as a basic
+control language.  I need to flesh out the math functions, and make it easy to 
+deal with Go arrays.
 
 ## Prior Work
 

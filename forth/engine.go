@@ -2,6 +2,7 @@ package forth
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 )
 
@@ -77,6 +78,22 @@ func (vm *VM) Push(v interface{}) {
 	vm.Stack = append(vm.Stack, v)
 }
 
+// debugPrint prints the codeseg...
+func debugPrint(vm *VM) error {
+	var revdict = make(map[uint16]string)
+	for k, v := range vm.dict {
+		revdict[v] = k
+	}
+	for i, v := range vm.codeseg {
+		opcode, ok := revdict[v]
+		if !ok {
+			opcode = fmt.Sprintf("%d", int16(v))
+		}
+		fmt.Printf("%03d: %d (%s)\n", i, v, opcode)
+	}
+	return nil
+}
+
 // Pop a value from the stack, returning the value there
 func (vm *VM) Pop() (v interface{}, err error) {
 	l := len(vm.Stack) - 1
@@ -98,7 +115,7 @@ func (vm *VM) RPush(v interface{}) {
 func (vm *VM) RPop() (v interface{}, err error) {
 	l := len(vm.Rstack) - 1
 	if l < 0 {
-		err = ErrUnderflow
+		err = ErrRStackUnderflow
 		return
 	}
 	v = vm.Rstack[l]
@@ -139,6 +156,7 @@ func NewVM() *VM {
 	// these come from this file...
 	ans.Define("mark", Word{mark, false})
 	ans.Define("forget", Word{forget, false})
+	ans.Define("debug.", Word{debugPrint, false})
 	return ans
 }
 

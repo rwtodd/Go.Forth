@@ -204,6 +204,12 @@ func printStr(vm *VM) error {
 	return err
 }
 
+// cr simply prints a carriage return
+func printCR(vm *VM) error {
+	fmt.Println()
+	return nil
+}
+
 // ioWordsInit adds the io-related core words to the VM.
 func ioWordsInit(vm *VM) {
 	vm.Define("read", Word{read, false})
@@ -214,4 +220,5 @@ func ioWordsInit(vm *VM) {
 	vm.Define(".s", Word{printStack, false})
 	vm.Define(".", Word{printTop, false})
 	vm.Define("type", Word{printStr, false})
+	vm.Define("cr", Word{printCR, false})
 }

@@ -33,7 +33,9 @@ func (c CompositeWord) Run(vm *VM) error {
 		if idx == opReturn {
 			break
 		}
-		vm.words[idx].Run(vm)
+		if err := vm.words[idx].Run(vm); err != nil {
+			return err
+		}
 		vm.ip++
 	}
 

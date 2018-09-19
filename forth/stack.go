@@ -94,6 +94,37 @@ func tuck(vm *VM) (e error) {
 	return
 }
 
+// >r push onto rstack
+func toR(vm *VM) (e error) {
+	var tos interface{}
+	tos, e = vm.Pop()
+	vm.RPush(tos)
+	return
+}
+
+// r> pop from rstack
+func fromR(vm *VM) (e error) {
+	var tos interface{}
+	tos, e = vm.RPop()
+	vm.Push(tos)
+	return
+}
+
+// r@ peek at rstack
+func peekR(vm *VM) error {
+	tos := len(vm.Rstack) - 1
+	if tos < 0 {
+		return ErrRStackUnderflow
+	}
+	vm.Push(vm.Rstack[tos])
+	return nil
+}
+
+func rdrop(vm *VM) error {
+	_, err := vm.RPop()
+	return err
+}
+
 // stackWordsInit adds stack-related core words to the VM
 func stackWordsInit(vm *VM) {
 	vm.Define("dup", Word{dup, false})
@@ -104,4 +135,8 @@ func stackWordsInit(vm *VM) {
 	vm.Define("-rot", Word{minusRotate, false})
 	vm.Define("nip", Word{nip, false})
 	vm.Define("tuck", Word{tuck, false})
+	vm.Define(">r", Word{toR, false})
+	vm.Define("r>", Word{fromR, false})
+	vm.Define("r@", Word{peekR, false})
+	vm.Define("rdrop", Word{rdrop, false})
 }
