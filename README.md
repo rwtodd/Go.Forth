@@ -45,11 +45,11 @@ immediate ("macro"-type words) which use `postpone`.
 As of Sept 2018, we have IF/ELSE/THEN, RECUR, and DO loops.
 
 ~~~~~~
-: block ( size -- ) 
-  0 swap tuck 0 DO over over DO j type i .  LOOP cr LOOP drop drop ;
-: blocks ( num -- ) 
-  0 DO   i block  LOOP ;
-5 blocks
+: block ( size -- )
+  0 swap tuck 0 DO over over DO j type i .  LOOP cr LOOP
+  drop drop ;
+: blocks ( num -- ) 1 + 1 DO i block loop ;
+4 blocks
 00
 00 01
 10 11
