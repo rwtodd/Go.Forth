@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package forth
 
 import (
@@ -23,19 +25,24 @@ type Word struct {
 	Immediate bool
 }
 
+// Variable represents a FORTH variable
+type Variable struct {
+	value any
+}
+
 // VM is the forth virtual machine state, which all
 // operations take
 type VM struct {
 	words []Word
 	dict  map[string]uint16 // maps from names to indexes in `words'
 
-	Stack  []interface{} // the data stack
-	Rstack []interface{} // the return stack
+	Stack  []any // the data stack
+	Rstack []any // the return stack
 
 	codeseg []uint16 // where the code for composite (user-defined) words go
 	ip      int      // instruction pointer
 	curdef  int      // the start-index of the word we are currently defining
-	curname string   // the name of teh word we are defining
+	curname string   // the name of the word we are defining
 
 	Source *bufio.Reader // our input
 	Sink   *bufio.Writer // out output
@@ -73,8 +80,21 @@ func mark(vm *VM) error {
 	return nil
 }
 
+// variable creates a new FORTH variable
+func variable(vm *VM) error {
+	buf := make([]rune, 0, 20)
+	str, err := nextToken(vm, buf)
+	if err != nil {
+		return err
+	}
+	varObj := &Variable{value: 0}
+	idx := vm.CreatePusher(varObj)
+	vm.dict[str] = idx
+	return nil
+}
+
 // Push a value onto the stack
-func (vm *VM) Push(v interface{}) {
+func (vm *VM) Push(v any) {
 	vm.Stack = append(vm.Stack, v)
 }
 
@@ -95,7 +115,7 @@ func debugPrint(vm *VM) error {
 }
 
 // Pop a value from the stack, returning the value there
-func (vm *VM) Pop() (v interface{}, err error) {
+func (vm *VM) Pop() (v any, err error) {
 	l := len(vm.Stack) - 1
 	if l < 0 {
 		err = ErrUnderflow
@@ -107,12 +127,12 @@ func (vm *VM) Pop() (v interface{}, err error) {
 }
 
 // RPush pushes a value onto the return stack
-func (vm *VM) RPush(v interface{}) {
+func (vm *VM) RPush(v any) {
 	vm.Rstack = append(vm.Rstack, v)
 }
 
 // RPop pops a value from the return stack, returning the value there
-func (vm *VM) RPop() (v interface{}, err error) {
+func (vm *VM) RPop() (v any, err error) {
 	l := len(vm.Rstack) - 1
 	if l < 0 {
 		err = ErrRStackUnderflow
@@ -125,7 +145,7 @@ func (vm *VM) RPop() (v interface{}, err error) {
 
 // CreatePusher generates a word in the dictionary, and returns the
 // index for the word.  No name is associated with the word.
-func (vm *VM) CreatePusher(v interface{}) uint16 {
+func (vm *VM) CreatePusher(v any) uint16 {
 	vm.words = append(vm.words, Word{Run: func(fvm *VM) error { fvm.Push(v); return nil }, Immediate: false})
 	return uint16(len(vm.words) - 1)
 }
@@ -152,11 +172,14 @@ func NewVM() *VM {
 	ioWordsInit(ans)
 	parseWordsInit(ans)
 	numWordsInit(ans)
+	arrayWordsInit(ans)
+	dictWordsInit(ans)
 
 	// these come from this file...
 	ans.Define("mark", Word{mark, false})
 	ans.Define("forget", Word{forget, false})
 	ans.Define("debug.", Word{debugPrint, false})
+	ans.Define("variable", Word{variable, false})
 	return ans
 }
 

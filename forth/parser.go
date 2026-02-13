@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package forth
 
 import (
@@ -251,7 +253,7 @@ func literal(vm *VM) (err error) {
 	if !vm.Compiling {
 		return ErrBadState
 	}
-	var value interface{}
+	var value any
 	value, err = vm.Pop()
 	if err != nil {
 		return

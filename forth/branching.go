@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package forth
 
 // (branch) branches unconditionally.
@@ -97,9 +99,12 @@ func opDo(vm *VM) (err error) {
 	return
 }
 
+// opLoop ends a DO loop, incrementing the index by 1
 func opLoop(vm *VM) error {
 	return opLoopInternal(vm, true)
 }
+
+// opLoopPlus ends a DO loop, incrementing the index by the value on the stack
 func opLoopPlus(vm *VM) error {
 	return opLoopInternal(vm, false)
 }
@@ -109,7 +114,7 @@ func opLoopInternal(vm *VM, pullVal bool) (err error) {
 	opRAt := vm.dict["r@"]
 	opRDrop := vm.dict["rdrop"]
 
-	var fixUpLoc interface{}
+	var fixUpLoc any
 	fixUpLoc, err = vm.Pop()
 	if err != nil {
 		return
@@ -159,6 +164,7 @@ func performLoopPlus(vm *VM) (err error) {
 	return
 }
 
+// setupDo sets up a DO loop by pushing limit and start index to rstack and determining loop direction
 func setupDo(vm *VM) (err error) {
 	err = toR(vm)
 	if err != nil {
@@ -187,6 +193,7 @@ func setupDo(vm *VM) (err error) {
 	return
 }
 
+// testDo checks if a DO loop should continue based on the loop direction and current index vs limit
 func testDo(vm *VM) (err error) {
 	rtop := len(vm.Rstack) - 1
 	if rtop < 2 {
@@ -218,6 +225,7 @@ func testDo(vm *VM) (err error) {
 	return
 }
 
+// getDoI gets the index of the current DO loop
 func getDoI(vm *VM) error {
 	rlen := len(vm.Rstack)
 	if rlen < 3 {
@@ -227,6 +235,7 @@ func getDoI(vm *VM) error {
 	return nil
 }
 
+// getDoJ gets the index of the outer loop in nested DO loops
 func getDoJ(vm *VM) error {
 	rlen := len(vm.Rstack)
 	if rlen < 6 {

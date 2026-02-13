@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package forth
 
 // stack words
@@ -120,6 +122,7 @@ func peekR(vm *VM) error {
 	return nil
 }
 
+// rdrop removes the top item from the return stack
 func rdrop(vm *VM) error {
 	_, err := vm.RPop()
 	return err

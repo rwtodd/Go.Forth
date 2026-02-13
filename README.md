@@ -6,7 +6,7 @@ An embeddable postfix mini-language for my Go programs.
 No, because I did not want to simulate a raw memory space, which would
 complicate interactions between the language and Go.  So, instead, I
 make the stack and all variables of garbage-collected type
-`interface{}`, and provide overloads so you can say stuff like:
+`any`, and provide overloads so you can say stuff like:
 
 ~~~~~~
 : double dup + ;
@@ -34,9 +34,12 @@ This is just preliminary work.  Words implemented:
 ~~~~~~
 \ ( read skip " chr ord .s . type cr
 [ ] : ; literal postpone immediate 
-dup drop swap over rot -rot + * mark 
-forget if else then recur  >r r> r@ rdrop
-do loop +loop i j
+dup drop swap over rot -rot + * - / sqrt log log10 log2
+max min sin cos tan mark forget if else then recur
+variable @ ! c@ c!
+bytes ints floats strings @len @push @pop @shift @unshift
+empty-dict d@ d@? d@| d! dkeys ddel
+ >r r> r@ rdrop do loop +loop i j
 ~~~~~~
 
 At this point, you can define custom words, which can include

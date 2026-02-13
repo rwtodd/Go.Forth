@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: MIT
+
 package forth
 
 import (
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 )
@@ -11,7 +13,7 @@ var vm = NewVM()
 // tstRunForth is the main test helper.. it lets you
 // run a code string, and FAILS if there is an error or
 // if the stack doesn't match the values passed in.
-func tstRunForth(t *testing.T, code string, vals ...interface{}) {
+func tstRunForth(t *testing.T, code string, vals ...any) {
 	if err := tstRunForthErr(t, code, vals...); err != nil {
 		t.Error(err)
 	}
@@ -19,10 +21,10 @@ func tstRunForth(t *testing.T, code string, vals ...interface{}) {
 
 // tstRunForthErr only fails the test if the stack doesn't match,
 // giving the error back to the caller for investigation.
-func tstRunForthErr(t *testing.T, code string, vals ...interface{}) error {
+func tstRunForthErr(t *testing.T, code string, vals ...any) error {
 	vm.ResetState()
 	tprog := strings.NewReader(code)
-	err := vm.Run(tprog, ioutil.Discard)
+	err := vm.Run(tprog, io.Discard)
 	if !stackEq(vals...) {
 		t.Fail()
 	}
@@ -31,7 +33,7 @@ func tstRunForthErr(t *testing.T, code string, vals ...interface{}) error {
 
 // stackEq is a helper function checking the stack contents
 // against the arguments.
-func stackEq(vals ...interface{}) bool {
+func stackEq(vals ...any) bool {
 	if len(vals) != len(vm.Stack) {
 		return false
 	}
