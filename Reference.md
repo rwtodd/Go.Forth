@@ -64,7 +64,7 @@ Words are grouped by category.
   Subtracts two numbers.  
   Example: `10 3 - .` → 7
 
-- *** : : * ( a b -- a*b ) <code>  
+- **\*** : : * ( a b -- a*b ) <code>  
   Multiplies two numbers or repeats a string.  
   Example: `3 4 * .` → 12  
   Example: `"hello" 3 * .` → hellohellohello
@@ -108,6 +108,80 @@ Words are grouped by category.
 - **tan**: : tan ( a -- tan(a) ) <code>  
   Computes the tangent (input in radians).  
   Example: `0 tan .` → 0
+
+- **round**: : round ( a -- round(a) ) <code>  
+  Rounds to the nearest integer.  
+  Example: `3.6 round .` → 4
+
+- **floor**: : floor ( a -- floor(a) ) <code>  
+  Rounds down to the nearest integer.  
+  Example: `3.6 floor .` → 3
+
+- **ceil**: : ceil ( a -- ceil(a) ) <code>  
+  Rounds up to the nearest integer.  
+  Example: `3.2 ceil .` → 4
+
+## Comparison and Logical Words
+
+System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and strings.
+
+- **=**: : = ( a b -- bool ) <code>  
+  Checks for equality.  
+  Example: `1 1 = .` → -1
+
+- **<**: : < ( a b -- bool ) <code>  
+  Checks less than.  
+  Example: `1 2 < .` → -1
+
+- **>**: : > ( a b -- bool ) <code>  
+  Checks greater than.  
+  Example: `2 1 > .` → -1
+
+- **<=**: : <= ( a b -- bool ) <code>  
+  Checks less than or equal.  
+  Example: `2 2 <= .` → -1
+
+- **>=**: : >= ( a b -- bool ) <code>  
+  Checks greater than or equal.  
+  Example: `2 1 >= .` → -1
+
+- **<>**: : <> ( a b -- bool ) <code>  
+  Checks inequality.  
+  Example: `1 2 <> .` → -1
+
+- **0=**: : 0= ( a -- bool ) <code>  
+  Checks if equal to zero (logical NOT).  
+  Example: `0 0= .` → -1
+
+- **0<**: : 0< ( a -- bool ) <code>  
+  Checks if less than zero.  
+  Example: `-1 0< .` → -1
+
+- **0>**: : 0> ( a -- bool ) <code>  
+  Checks if greater than zero.  
+  Example: `1 0> .` → -1
+
+- **and**: : and ( a b -- c ) <code>  
+  Bitwise AND.  
+  Example: `-1 1 and .` → 1
+
+- **or**: : or ( a b -- c ) <code>  
+  Bitwise OR.  
+  Example: `1 2 or .` → 3
+
+- **xor**: : xor ( a b -- c ) <code>  
+  Bitwise XOR.  
+  Example: `1 3 xor .` → 2
+
+- **invert**: : invert ( a -- b ) <code>  
+  Bitwise NOT.  
+  Example: `0 invert .` → -1
+
+- **true**: : true ( -- -1 ) <code>  
+  Pushes constant -1 (TRUE).  
+
+- **false**: : false ( -- 0 ) <code>  
+  Pushes constant 0 (FALSE).
 
 ## Input/Output Words
 
@@ -183,6 +257,10 @@ Words are grouped by category.
 - **immediate**: func makeImmediate ('immediate') makes the last defined word immediate  
   Makes the last defined word immediate.  
   Example: `: myword ... ; immediate`
+
+- **compile,**: compileComma  
+  Compiles an opcode (integer index) directly into the code stream.  
+  Example: `10 compile,`
 
 ## Control Flow Words
 
@@ -326,6 +404,14 @@ Dictionaries provide key-value storage with string keys, supporting any Go value
 - **d@?** ( dict key -- value -1 | 0 ): Query value with existence flag
   Example: `my-dict " age" d@?` returns value and -1 if found, or 0 if not found
 
+- **mark**: mark  
+  Sets a marker in the dictionary for a later `forget`.  
+  Example: `mark`
+
+- **forget**: forget  
+  Forgets all definitions defined since the last `mark`.  
+  Example: `forget`
+
 ## Internal Words
 
 These are typically not used directly but are part of the implementation:
@@ -338,3 +424,7 @@ These are typically not used directly but are part of the implementation:
 
 - **(perfLoopPlus)**: (perfLoopPlus) ( amt -- )  
   Performs the loop increment.
+
+- **debug.**: debugPrint  
+  Prints the current code segment for debugging purposes.  
+  Example: `debug.`

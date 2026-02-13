@@ -174,6 +174,7 @@ func NewVM() *VM {
 	numWordsInit(ans)
 	arrayWordsInit(ans)
 	dictWordsInit(ans)
+	comparisonWordsInit(ans)
 
 	// these come from this file...
 	ans.Define("mark", Word{mark, false})
