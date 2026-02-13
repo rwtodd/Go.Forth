@@ -3,14 +3,10 @@
 package forth
 
 import (
-	"strings"
 	"testing"
 )
 
 func TestComparisonOps(t *testing.T) {
-	vm := NewVM()
-	comparisonWordsInit(vm) // Manually init since it's not in NewVM yet in this context, but good for isolation
-
 	tests := []struct {
 		name     string
 		input    string
@@ -52,30 +48,11 @@ func TestComparisonOps(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			vm.ResetState()
-			// Use a specialized run function or just standard interpretation
-			// Since our VM reads from io.Reader, we can wrap strings.
-			vm.Run(strings.NewReader(tt.input), nil)
-
-			if len(vm.Stack) < 1 {
-				t.Fatalf("Stack underflow")
-			}
-			val, ok := vm.Stack[len(vm.Stack)-1].(int)
-			if !ok {
-				t.Fatalf("Top of stack is not int")
-			}
-			if val != tt.expected {
-				t.Errorf("Expected %d, got %d", tt.expected, val)
-			}
-		})
+		tstRunForth(t, tt.name, tt.input, tt.expected)
 	}
 }
 
 func TestRefinedComparisons(t *testing.T) {
-	vm := NewVM()
-	comparisonWordsInit(vm)
-
 	tests := []struct {
 		name     string
 		input    string
@@ -91,28 +68,11 @@ func TestRefinedComparisons(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			vm.ResetState()
-			vm.Run(strings.NewReader(tt.input), nil)
-
-			if len(vm.Stack) < 1 {
-				t.Fatalf("Stack underflow")
-			}
-			val, ok := vm.Stack[len(vm.Stack)-1].(int)
-			if !ok {
-				t.Fatalf("Top of stack is not int")
-			}
-			if val != tt.expected {
-				t.Errorf("Expected %d, got %d", tt.expected, val)
-			}
-		})
+		tstRunForth(t, tt.name, tt.input, tt.expected)
 	}
 }
 
 func TestBitwiseOps(t *testing.T) {
-	vm := NewVM()
-	comparisonWordsInit(vm)
-
 	tests := []struct {
 		name     string
 		input    string
@@ -129,20 +89,6 @@ func TestBitwiseOps(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			vm.ResetState()
-			vm.Run(strings.NewReader(tt.input), nil)
-
-			if len(vm.Stack) < 1 {
-				t.Fatalf("Stack underflow")
-			}
-			val, ok := vm.Stack[len(vm.Stack)-1].(int)
-			if !ok {
-				t.Fatalf("Top of stack is not int")
-			}
-			if val != tt.expected {
-				t.Errorf("Expected %d, got %d", tt.expected, val)
-			}
-		})
+		tstRunForth(t, tt.name, tt.input, tt.expected)
 	}
 }
