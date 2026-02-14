@@ -49,7 +49,7 @@ func opIf(vm *VM) (err error) {
 // inserts the right amount to jump over the IF (or ELSE)
 // block. No new code is added to the codestream.
 func opThen(vm *VM) (err error) {
-	var tos interface{}
+	var tos any
 	tos, err = vm.Pop()
 	fixupLoc, ok := tos.(int)
 	if ok {
@@ -78,10 +78,7 @@ func opElse(vm *VM) (err error) {
 
 // RECUR just jumps to the start of the current function
 func recur(vm *VM) (err error) {
-	// 5     6      7      8      // Start = 5  len(code) == 8
-	// PRINT PRINT  PRINT  RECUR  // Right answer ==  -4 (5 - 8 - 1)
-	distance := vm.curdef - len(vm.codeseg) - 1
-	vm.codeseg = append(vm.codeseg, opBranch, uint16(distance))
+	vm.codeseg = append(vm.codeseg, uint16(len(vm.words)))
 	return
 }
 

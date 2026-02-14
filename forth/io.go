@@ -181,7 +181,7 @@ func ordFromStr(vm *VM) error {
 func printStack(vm *VM) error {
 	tot := len(vm.Stack)
 	for i, v := range vm.Stack {
-		fmt.Printf("%2d: %v\n", tot-i, v)
+		fmt.Fprintf(vm.Sink, "%2d: %v\n", tot-i, v)
 	}
 	return nil
 }
@@ -191,7 +191,7 @@ func printStack(vm *VM) error {
 func printTop(vm *VM) error {
 	v, err := vm.Pop()
 	if err == nil {
-		fmt.Print(v, " ")
+		fmt.Fprint(vm.Sink, v, " ")
 	}
 	return err
 }
@@ -201,14 +201,14 @@ func printTop(vm *VM) error {
 func printStr(vm *VM) error {
 	v, err := vm.Pop()
 	if err == nil {
-		fmt.Print(v)
+		fmt.Fprint(vm.Sink, v)
 	}
 	return err
 }
 
 // cr simply prints a carriage return
 func printCR(vm *VM) error {
-	fmt.Println()
+	fmt.Fprintln(vm.Sink)
 	return nil
 }
 

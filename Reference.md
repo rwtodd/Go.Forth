@@ -391,6 +391,38 @@ When array operations are performed on variables containing slices, the variable
 
 For manual control, extract the array first: `x @ @push` (standard array behavior).
 
+For manual control, extract the array first: `x @ @push` (standard array behavior).
+
+## Local Variables
+
+Local variables can be defined within a word using the `{: ... :}` syntax. They are scoped to the word execution and are automatically cleaned up when the word exits.
+
+- **{:** ... **:}**: Define local variables.
+  - Takes names from the code stream.
+  - Initialized from the stack in reverse order of definition (e.g., `{: a b :}` initializes `b` from TOS, then `a`).
+  - Supports `|` separator for uninitialized locals.
+  - Locals shadow global dictionary words.
+  - Usage inside the word:
+    - `name` pushes the local's value to the stack.
+    - `name!` pops a value from the stack into the local.
+
+  Example Basic:
+  ```forth
+  : add3 {: a b c :} a b c + + ;
+  1 2 3 add3 . \ prints 6
+  ```
+
+  Example Uninitialized:
+  ```forth
+  : swap-locals {: a b | temp :} a temp! b a! temp b! a b ;
+  ```
+
+  Example Recursion:
+  Recursion using `recur` works correctly with locals, creating a new stack frame for variables.
+  ```forth
+  : fact {: n :} n 1 <= IF 1 ELSE n n 1 - recur * THEN ;
+  ```
+
 ## Dictionary Words
 
 Dictionaries provide key-value storage with string keys, supporting any Go value types. They offer efficient lookups and modifications with comprehensive error handling.

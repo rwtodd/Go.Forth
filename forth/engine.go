@@ -12,6 +12,10 @@ import (
 // so we don't have to look them up all the time
 const (
 	opReturn = iota
+	opCreateLocals
+	opLocalGet
+	opLocalSet
+
 	opLitINT
 	opLitUINT
 	opCompileComma
@@ -49,7 +53,8 @@ type VM struct {
 
 	marker uint16 // place to roll back to when we FORGET
 
-	Compiling bool // are we compiling right now?
+	Compiling     bool           // are we compiling right now?
+	CompileLocals map[string]int // locals defined in the current word
 }
 
 // Define adds a word to the VM
@@ -169,12 +174,17 @@ func execute(vm *VM) error {
 // wordset
 func NewVM() *VM {
 	ans := &VM{
-		dict:      make(map[string]uint16),
-		Compiling: true,
+		dict:          make(map[string]uint16),
+		Compiling:     true,
+		CompileLocals: make(map[string]int),
 	}
 
 	// SPECIAL... must be specific opcodes to match constants
 	ans.Define("(RET)", Word{nil, false})
+	ans.Define("(createLocals)", Word{nil, false})
+	ans.Define("(localGet)", Word{nil, false})
+	ans.Define("(localSet)", Word{nil, false})
+
 	ans.Define("(litINT)", Word{litINT, false})
 	ans.Define("(litUINT)", Word{litUINT, false})
 	ans.Define("compile,", Word{compileComma, false})
@@ -205,6 +215,7 @@ func NewVM() *VM {
 func (vm *VM) Run(r io.Reader, w io.Writer) error {
 	vm.Source = bufio.NewReader(r)
 	vm.Sink = bufio.NewWriter(w)
+	defer vm.Sink.Flush()
 	vm.Compiling = true
 	return interpret(vm)
 }

@@ -30,16 +30,38 @@ func (c CompositeWord) Run(vm *VM) error {
 	vm.ip = c.start
 
 	// run the internal words
+	// run the internal words
+	var locals []any
 	for {
 		idx := vm.codeseg[vm.ip]
-		if idx == opReturn {
-			break
-		}
-		if err := vm.words[idx].Run(vm); err != nil {
-			return err
+		switch idx {
+		case opReturn:
+			goto Done
+		case opCreateLocals:
+			vm.ip++
+			count := vm.codeseg[vm.ip]
+			locals = make([]any, count)
+		case opLocalGet:
+			vm.ip++
+			lidx := vm.codeseg[vm.ip]
+			vm.Push(locals[lidx])
+		case opLocalSet:
+			vm.ip++
+			lidx := vm.codeseg[vm.ip]
+			val, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			locals[lidx] = val
+
+		default:
+			if err := vm.words[idx].Run(vm); err != nil {
+				return err
+			}
 		}
 		vm.ip++
 	}
+Done:
 
 	if len(vm.Rstack) < rstackLen {
 		return ErrUnderflowMsg("return stack underflow")
@@ -156,12 +178,144 @@ func stopCompile(vm *VM) error {
 	if !vm.Compiling {
 		return ErrBadStateMsg("not compiling (stopCompile called in interpret mode)")
 	}
+
+	// Deal with locals if we have them
+	// Since we double-map, len(vm.CompileLocals) is not the count.
+	// We need to find the max index.
+	numLocals := 0
+	if len(vm.CompileLocals) > 0 {
+		maxIdx := -1
+		for _, v := range vm.CompileLocals {
+			if v > maxIdx {
+				maxIdx = v
+			}
+		}
+		numLocals = maxIdx + 1
+	}
+
+	if numLocals > 0 {
+		// Insert opCreateLocals and the count at the beginning of the definition
+		// The definition starts at vm.curdef
+		// We need to shift everything from vm.curdef onwards by 2 spots
+
+		// 1. Expand the slice
+		vm.codeseg = append(vm.codeseg, 0, 0)
+		copy(vm.codeseg[vm.curdef+2:], vm.codeseg[vm.curdef:])
+
+		// 2. Insert the instruction
+		vm.codeseg[vm.curdef] = opCreateLocals
+		vm.codeseg[vm.curdef+1] = uint16(numLocals)
+
+		// 3. Fixup recursion
+		// Any branch that pointed to vm.curdef-1 (which is where recur points)
+		// now points to vm.curdef+1 because of the shift.
+		// However, we want it to point to vm.curdef-1 (the start of the function)
+		// essentially, the relative offset needs to be decreased by 2.
+		// NOTE: The target calculation is: TargetIP = InstIP + Offset
+		// We want NewTargetIP == vm.curdef - 1
+		for i := vm.curdef + 2; i < len(vm.codeseg); i++ {
+			if vm.codeseg[i] == opBranch || vm.codeseg[i] == opBZR {
+				offset := int16(vm.codeseg[i+1])
+				targetIP := i + int(offset)
+				// Check if it targets what used to be the start (now shifted)
+				// The start was vm.curdef.
+				// The RECUR logic calculated offset to hit vm.curdef - 1 (the IP before start)
+				// Because Run loop increments IP.
+				// Wait, let's re-verify RECUR logic.
+				// recur: distance := vm.curdef - len(vm.codeseg) - 1
+				// IP of branch is len(codeseg).
+				// TargetIP = len(codeseg) + distance = curdef - 1.
+				// NextIP = TargetIP + 1 = curdef. Correct.
+
+				// So we are looking for TargetIP == vm.curdef - 1.
+				if targetIP == vm.curdef+1 { // It shifted by 2
+					// We want it to be vm.curdef - 1
+					// NewTarget = OldTarget - 2
+					// NewOffset = OldOffset - 2
+					vm.codeseg[i+1] = uint16(offset - 2)
+				}
+			}
+			// Skip arguments
+			if vm.codeseg[i] == opBranch || vm.codeseg[i] == opBZR ||
+				vm.codeseg[i] == opLitINT || vm.codeseg[i] == opLitUINT ||
+				vm.codeseg[i] == opCreateLocals || vm.codeseg[i] == opLocalGet ||
+				vm.codeseg[i] == opLocalSet {
+				i++
+			}
+		}
+	}
+
 	vm.Compiling = false
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
 	// create a composite word out of the current definition
 	cw := CompositeWord{start: vm.curdef}
 	vm.Define(vm.curname, Word{Run: cw.Run, Immediate: false})
+
+	// Reset locals map
+	vm.CompileLocals = nil
+	return nil
+}
+
+// compileLocals ({:) parses local variable definitions
+func compileLocals(vm *VM) error {
+	if !vm.Compiling {
+		return ErrBadStateMsg("interpret mode ({: called outside definition)")
+	}
+
+	if vm.CompileLocals == nil {
+		vm.CompileLocals = make(map[string]int)
+	}
+
+	buf := make([]rune, 0, 20)
+	var initList []int
+	uninitMode := false
+
+	for {
+		str, err := nextToken(vm, buf)
+		if err != nil {
+			return err
+		}
+
+		if str == ":}" {
+			break
+		}
+		if str == "|" {
+			uninitMode = true
+			continue
+		}
+
+		if str[len(str)-1] == '!' {
+			return ErrArgumentMsg("local variable names cannot end in '!'")
+		}
+
+		// define the local
+		// Check if it already exists? Assuming no redefinition for now or shadowing ok.
+		// Use a simpler approach: finding max index to know next index.
+		idx := 0
+		if len(vm.CompileLocals) > 0 {
+			maxIdx := -1
+			for _, v := range vm.CompileLocals {
+				if v > maxIdx {
+					maxIdx = v
+				}
+			}
+			idx = maxIdx + 1
+		}
+
+		vm.CompileLocals[str] = idx
+		vm.CompileLocals[str+"!"] = idx
+
+		if !uninitMode {
+			initList = append(initList, idx)
+		}
+	}
+
+	// Compile initialization code in reverse order
+	for i := len(initList) - 1; i >= 0; i-- {
+		vm.codeseg = append(vm.codeseg, opLocalSet, uint16(initList[i]))
+	}
+
 	return nil
 }
 
@@ -179,8 +333,9 @@ func compile(vm *VM) (err error) {
 	// STEP 1: read the name
 	var str string
 	str, err = nextToken(vm, buf)
-	vm.curname = str            // remember the name of the definition
-	vm.curdef = len(vm.codeseg) // remember the start of the definition
+	vm.curname = str                        // remember the name of the definition
+	vm.curdef = len(vm.codeseg)             // remember the start of the definition
+	vm.CompileLocals = make(map[string]int) // reset locals
 
 	for (err == nil) && vm.Compiling {
 		str, err = nextToken(vm, buf)
@@ -189,6 +344,16 @@ func compile(vm *VM) (err error) {
 				err = nil
 			}
 			return
+		}
+
+		// Check locals first (shadowing)
+		if idx, ok := vm.CompileLocals[str]; ok {
+			if str[len(str)-1] == '!' {
+				vm.codeseg = append(vm.codeseg, opLocalSet, uint16(idx))
+			} else {
+				vm.codeseg = append(vm.codeseg, opLocalGet, uint16(idx))
+			}
+			continue
 		}
 
 		// lookup the string in the dictionary
@@ -363,4 +528,5 @@ func parseWordsInit(vm *VM) {
 	vm.Define("immediate", Word{makeImmediate, false})
 	vm.Define("'", Word{tick, false})
 	vm.Define("[']", Word{bracketTick, true})
+	vm.Define("{:", Word{compileLocals, true})
 }
