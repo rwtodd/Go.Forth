@@ -21,7 +21,7 @@ func add(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = float64(op1) + op2
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("+ requires numeric arguments")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -30,17 +30,17 @@ func add(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = op1 + op2
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("+ requires numeric arguments")
 		}
 	case string:
 		op2, ok := vm.Stack[top-1].(string)
 		if ok {
 			vm.Stack[top-1] = op2 + op1
 		} else {
-			err = ErrArgument
+			err = ErrArgumentMsg("+ requires two strings or two numbers")
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("invalid types for +")
 	}
 	vm.Stack = vm.Stack[:top]
 	return
@@ -62,7 +62,7 @@ func multiply(vm *VM) (err error) {
 		case string:
 			vm.Stack[top-1] = strings.Repeat(op2, op1)
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("* requires numeric arguments or string+int")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -71,17 +71,17 @@ func multiply(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = op1 * op2
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("* requires numeric arguments")
 		}
 	case string:
 		op2, ok := vm.Stack[top-1].(int)
 		if ok {
 			vm.Stack[top-1] = strings.Repeat(op1, op2)
 		} else {
-			err = ErrArgument
+			err = ErrArgumentMsg("* string repetition requires integer count")
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("invalid types for *")
 	}
 	vm.Stack = vm.Stack[:top]
 	return
@@ -101,7 +101,7 @@ func subtract(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = op2 - float64(op1)
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("- requires numeric arguments")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -110,10 +110,10 @@ func subtract(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = op2 - op1
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("- requires numeric arguments")
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("- requires numeric arguments")
 	}
 	vm.Stack = vm.Stack[:top]
 	return
@@ -130,38 +130,38 @@ func divide(vm *VM) (err error) {
 		switch op2 := vm.Stack[top-1].(type) {
 		case int:
 			if op1 == 0 {
-				err = ErrArgument
+				err = ErrArgumentMsg("division by zero")
 			} else {
 				vm.Stack[top-1] = op2 / op1
 			}
 		case float64:
 			if op1 == 0 {
-				err = ErrArgument
+				err = ErrArgumentMsg("division by zero")
 			} else {
 				vm.Stack[top-1] = op2 / float64(op1)
 			}
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("/ requires numeric arguments")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
 		case int:
 			if op1 == 0 {
-				err = ErrArgument
+				err = ErrArgumentMsg("division by zero")
 			} else {
 				vm.Stack[top-1] = float64(op2) / op1
 			}
 		case float64:
 			if op1 == 0 {
-				err = ErrArgument
+				err = ErrArgumentMsg("division by zero")
 			} else {
 				vm.Stack[top-1] = op2 / op1
 			}
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("/ requires numeric arguments")
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("/ requires numeric arguments")
 	}
 	vm.Stack = vm.Stack[:top]
 	return
@@ -175,18 +175,18 @@ func sqrt(vm *VM) (err error) {
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
 	case int:
 		if op < 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("sqrt requires non-negative argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Sqrt(float64(op))
 		}
 	case float64:
 		if op < 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("sqrt requires non-negative argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Sqrt(op)
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("sqrt requires numeric argument")
 	}
 	return
 }
@@ -199,18 +199,18 @@ func log(vm *VM) (err error) {
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
 	case int:
 		if op <= 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("log requires positive argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Log(float64(op))
 		}
 	case float64:
 		if op <= 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("log requires positive argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Log(op)
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("log requires numeric argument")
 	}
 	return
 }
@@ -223,18 +223,18 @@ func log10(vm *VM) (err error) {
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
 	case int:
 		if op <= 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("log10 requires positive argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Log10(float64(op))
 		}
 	case float64:
 		if op <= 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("log10 requires positive argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Log10(op)
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("log10 requires numeric argument")
 	}
 	return
 }
@@ -247,18 +247,18 @@ func log2(vm *VM) (err error) {
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
 	case int:
 		if op <= 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("log2 requires positive argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Log2(float64(op))
 		}
 	case float64:
 		if op <= 0 {
-			err = ErrArgument
+			err = ErrArgumentMsg("log2 requires positive argument")
 		} else {
 			vm.Stack[len(vm.Stack)-1] = math.Log2(op)
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("log2 requires numeric argument")
 	}
 	return
 }
@@ -281,7 +281,7 @@ func max(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = math.Max(op2, float64(op1))
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("max requires numeric arguments")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -290,10 +290,10 @@ func max(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = math.Max(op2, op1)
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("max requires numeric arguments")
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("max requires numeric arguments")
 	}
 	vm.Stack = vm.Stack[:top]
 	return
@@ -317,7 +317,7 @@ func min(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = math.Min(op2, float64(op1))
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("min requires numeric arguments")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
@@ -326,10 +326,10 @@ func min(vm *VM) (err error) {
 		case float64:
 			vm.Stack[top-1] = math.Min(op2, op1)
 		default:
-			err = ErrArgument
+			err = ErrArgumentMsg("min requires numeric arguments")
 		}
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("min requires numeric arguments")
 	}
 	vm.Stack = vm.Stack[:top]
 	return
@@ -346,7 +346,7 @@ func sin(vm *VM) (err error) {
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Sin(op)
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("sin requires numeric argument")
 	}
 	return
 }
@@ -362,7 +362,7 @@ func cos(vm *VM) (err error) {
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Cos(op)
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("cos requires numeric argument")
 	}
 	return
 }
@@ -378,7 +378,7 @@ func tan(vm *VM) (err error) {
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Tan(op)
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("tan requires numeric argument")
 	}
 	return
 }
@@ -394,7 +394,7 @@ func round(vm *VM) (err error) {
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Round(op)
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("round requires numeric argument")
 	}
 	return
 }
@@ -410,7 +410,7 @@ func floor(vm *VM) (err error) {
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Floor(op)
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("floor requires numeric argument")
 	}
 	return
 }
@@ -426,7 +426,7 @@ func ceil(vm *VM) (err error) {
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Ceil(op)
 	default:
-		err = ErrArgument
+		err = ErrArgumentMsg("ceil requires numeric argument")
 	}
 	return
 }

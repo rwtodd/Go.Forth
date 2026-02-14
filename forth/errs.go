@@ -2,7 +2,9 @@
 
 package forth
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	// ErrBadState reports bad VM states
@@ -14,12 +16,44 @@ var (
 	// ErrArgument reports a bad argument to an operation
 	ErrArgument = errors.New("bad argument")
 
-	// ErrRStackUnderflow reports when the Rstack is too low
-	ErrRStackUnderflow = errors.New("r-stack underflow")
-
 	// ErrIndexOutOfBounds reports array index out of bounds
 	ErrIndexOutOfBounds = errors.New("index out of bounds")
 
 	// ErrKeyNotFound reports when a dictionary key is not found
 	ErrKeyNotFound = errors.New("key not found")
 )
+
+// Error wraps a sentinel error with a specific message
+type Error struct {
+	Err error
+	Msg string
+}
+
+func (e *Error) Error() string { return e.Msg }
+func (e *Error) Unwrap() error { return e.Err }
+
+func ErrBadStateMsg(msg string) error {
+	return &Error{Err: ErrBadState, Msg: msg}
+}
+
+func ErrUnderflowMsg(msg string) error {
+	return &Error{Err: ErrUnderflow, Msg: msg}
+}
+
+func ErrArgumentMsg(msg string) error {
+	return &Error{Err: ErrArgument, Msg: msg}
+}
+
+func ErrIndexOutOfBoundsMsg(msg string) error {
+	return &Error{Err: ErrIndexOutOfBounds, Msg: msg}
+}
+
+func ErrKeyNotFoundMsg(msg string) error {
+	return &Error{Err: ErrKeyNotFound, Msg: msg}
+}
+
+// ErrInternalMsg wraps a generic error as an internal error, or just returns a new error
+// if we don't have a specific sentinel for it.
+// Actually, we said we'd remove bare fmt.Errorf.
+// If it doesn't fit the others, maybe we need another category?
+// For now, let's assume we can fit everything.

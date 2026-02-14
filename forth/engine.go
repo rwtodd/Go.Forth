@@ -62,7 +62,7 @@ func (vm *VM) Define(name string, word Word) {
 // vm.marker.
 func forget(vm *VM) error {
 	if len(vm.words) < int(vm.marker) {
-		return ErrBadState
+		return ErrBadStateMsg("cannot forget below marker")
 	}
 
 	for k, v := range vm.dict {
@@ -118,7 +118,7 @@ func debugPrint(vm *VM) error {
 func (vm *VM) Pop() (v any, err error) {
 	l := len(vm.Stack) - 1
 	if l < 0 {
-		err = ErrUnderflow
+		err = ErrUnderflow // Standard data stack underflow
 		return
 	}
 	v = vm.Stack[l]
@@ -135,7 +135,7 @@ func (vm *VM) RPush(v any) {
 func (vm *VM) RPop() (v any, err error) {
 	l := len(vm.Rstack) - 1
 	if l < 0 {
-		err = ErrRStackUnderflow
+		err = ErrUnderflowMsg("return stack underflow")
 		return
 	}
 	v = vm.Rstack[l]
@@ -148,6 +148,21 @@ func (vm *VM) RPop() (v any, err error) {
 func (vm *VM) CreatePusher(v any) uint16 {
 	vm.words = append(vm.words, Word{Run: func(fvm *VM) error { fvm.Push(v); return nil }, Immediate: false})
 	return uint16(len(vm.words) - 1)
+}
+
+func execute(vm *VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	idx, ok := val.(int)
+	if !ok {
+		return ErrArgumentMsg("execute requires an integer index")
+	}
+	if idx < 0 || idx >= len(vm.words) {
+		return ErrArgumentMsg("invalid word index")
+	}
+	return vm.words[idx].Run(vm)
 }
 
 // NewVM returns a new Forth VM, initialized with the base
@@ -181,6 +196,7 @@ func NewVM() *VM {
 	ans.Define("forget", Word{forget, false})
 	ans.Define("debug.", Word{debugPrint, false})
 	ans.Define("variable", Word{variable, false})
+	ans.Define("execute", Word{execute, false})
 	return ans
 }
 

@@ -42,7 +42,7 @@ func (c CompositeWord) Run(vm *VM) error {
 	}
 
 	if len(vm.Rstack) < rstackLen {
-		return ErrRStackUnderflow
+		return ErrUnderflowMsg("return stack underflow")
 	}
 
 	// clean up the rstack and exit
@@ -98,14 +98,14 @@ func decodeLiteral(s string) (interface{}, error) {
 	}
 
 	// we can't tell what this token is!
-	return nil, fmt.Errorf("unknown token <%s>", s)
+	return nil, ErrArgumentMsg(fmt.Sprintf("unknown token <%s>", s))
 }
 
 // stopInterpret completes an interpretation and falls back to the compiler
 // (assuming one was in play
 func stopInterpret(vm *VM) error {
 	if vm.Compiling {
-		return ErrBadState
+		return ErrBadStateMsg("not compiling (stopInterpret called in compiler mode)")
 	}
 	vm.Compiling = true
 	return nil
@@ -115,7 +115,7 @@ func stopInterpret(vm *VM) error {
 // reads words one at a time...
 func interpret(vm *VM) (err error) {
 	if !vm.Compiling {
-		return ErrBadState
+		return ErrBadStateMsg("already interpreting (interpret called in interpret mode)")
 	}
 
 	vm.Compiling = false
@@ -135,7 +135,7 @@ func interpret(vm *VM) (err error) {
 		if idx, ok := vm.dict[str]; ok {
 			err = vm.words[idx].Run(vm)
 		} else {
-			// if it's not there, put it on the stack as a literal
+			// if it's not in the dict, put it on the stack as a literal
 			var lit interface{}
 			if lit, err = decodeLiteral(str); err == nil {
 				vm.Push(lit)
@@ -154,7 +154,7 @@ func makeImmediate(vm *VM) error {
 // stopCompile (';') terminates a compilation
 func stopCompile(vm *VM) error {
 	if !vm.Compiling {
-		return ErrBadState
+		return ErrBadStateMsg("not compiling (stopCompile called in interpret mode)")
 	}
 	vm.Compiling = false
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
@@ -169,7 +169,7 @@ func stopCompile(vm *VM) error {
 // the definition until ';' tells it to stop
 func compile(vm *VM) (err error) {
 	if vm.Compiling {
-		return ErrBadState
+		return ErrBadStateMsg("already compiling (compile called in compiler mode)")
 	}
 
 	vm.Compiling = true
@@ -251,7 +251,7 @@ func compileLiteral(vm *VM, value interface{}) {
 // if possible, and uses a pusher if necessary.
 func literal(vm *VM) (err error) {
 	if !vm.Compiling {
-		return ErrBadState
+		return ErrBadStateMsg("interpret mode (literal called outside definition)")
 	}
 	var value any
 	value, err = vm.Pop()
@@ -272,7 +272,7 @@ func compileComma(vm *VM) error {
 
 	num, ok := value.(int)
 	if !ok || (num < 0) || (num > len(vm.words)) {
-		return ErrArgument
+		return ErrArgumentMsg("compile, expects valid word index")
 	}
 
 	vm.codeseg = append(vm.codeseg, uint16(num))
@@ -283,7 +283,7 @@ func compileComma(vm *VM) error {
 // immediates, it creates code that calls code in the caller.
 func postpone(vm *VM) error {
 	if !vm.Compiling {
-		return ErrBadState
+		return ErrBadStateMsg("interpret mode (postpone called outside definition)")
 	}
 
 	buf := make([]rune, 0, 20)
@@ -296,7 +296,7 @@ func postpone(vm *VM) error {
 
 	opcode, ok := vm.dict[str]
 	if !ok {
-		return fmt.Errorf("POSTPONE: no word <%s>", str)
+		return ErrArgumentMsg(fmt.Sprintf("POSTPONE: no word <%s>", str))
 	}
 
 	// STEP 2: generate the code
@@ -311,6 +311,46 @@ func postpone(vm *VM) error {
 	return nil
 }
 
+// tick (') reads the next word and pushes its execution token (index)
+// to the stack.
+func tick(vm *VM) error {
+	buf := make([]rune, 0, 20)
+	str, err := nextToken(vm, buf)
+	if err != nil {
+		return err
+	}
+
+	idx, ok := vm.dict[str]
+	if !ok {
+		return ErrArgumentMsg(fmt.Sprintf("' : word <%s> not found", str))
+	}
+
+	vm.Push(int(idx))
+	return nil
+}
+
+// bracketTick ([']) is an immediate word that reads the next word and
+// compiles its execution token (index) as a literal.
+func bracketTick(vm *VM) error {
+	if !vm.Compiling {
+		return ErrBadStateMsg("interpret mode (['] called outside definition)")
+	}
+
+	buf := make([]rune, 0, 20)
+	str, err := nextToken(vm, buf)
+	if err != nil {
+		return err
+	}
+
+	idx, ok := vm.dict[str]
+	if !ok {
+		return ErrArgumentMsg(fmt.Sprintf("['] : word <%s> not found", str))
+	}
+
+	vm.codeseg = append(vm.codeseg, opLitUINT, idx)
+	return nil
+}
+
 func parseWordsInit(vm *VM) {
 	vm.Define("\\", Word{nlComment, true})
 	vm.Define("(", Word{parenComment, true})
@@ -321,4 +361,6 @@ func parseWordsInit(vm *VM) {
 	vm.Define("literal", Word{literal, true})
 	vm.Define("postpone", Word{postpone, true})
 	vm.Define("immediate", Word{makeImmediate, false})
+	vm.Define("'", Word{tick, false})
+	vm.Define("[']", Word{bracketTick, true})
 }

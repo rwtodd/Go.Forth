@@ -116,7 +116,7 @@ func fromR(vm *VM) (e error) {
 func peekR(vm *VM) error {
 	tos := len(vm.Rstack) - 1
 	if tos < 0 {
-		return ErrRStackUnderflow
+		return ErrUnderflowMsg("return stack underflow")
 	}
 	vm.Push(vm.Rstack[tos])
 	return nil

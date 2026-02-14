@@ -262,6 +262,18 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Compiles an opcode (integer index) directly into the code stream.  
   Example: `10 compile,`
 
+- **'**: tick ( ' name -- xt )  
+  Finds the word in the dictionary and pushes its execution token (index) to the stack.  
+  Example: `' dup`
+
+- **[']**: bracketTick ( ['] name -- )  
+  Compiles the execution token of the following word as a literal. Immediate.  
+  Example: `: get-dup ['] dup ;`
+
+- **execute**: execute ( xt -- )  
+  Executes the word execution token on the stack.  
+  Example: `' dup execute`
+
 ## Control Flow Words
 
 - **if**: IF is an immediate word that stores a fixup address on the stack for ELSE / THEN to find, and stores a (bzr) with a dummy branch amount in the code stream.  

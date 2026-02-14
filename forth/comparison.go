@@ -35,7 +35,7 @@ func equal(vm *VM) error {
 		case float64:
 			res = (float64(v1) == v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("= requires comparable numeric or string types")
 		}
 	case float64:
 		switch v2 := val2.(type) {
@@ -44,16 +44,16 @@ func equal(vm *VM) error {
 		case float64:
 			res = (v1 == v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("= requires comparable numeric or string types")
 		}
 	case string:
 		v2, ok := val2.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("= requires two strings")
 		}
 		res = (v1 == v2)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("= requires comparable numeric or string types")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -79,7 +79,7 @@ func lessThan(vm *VM) error {
 		case float64:
 			res = (float64(v1) < v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("< requires numeric arguments")
 		}
 	case float64:
 		switch v2 := val2.(type) {
@@ -88,16 +88,16 @@ func lessThan(vm *VM) error {
 		case float64:
 			res = (v1 < v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("< requires numeric arguments")
 		}
 	case string:
 		v2, ok := val2.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("< requires two strings")
 		}
 		res = (v1 < v2)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("< requires numeric or string type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -123,7 +123,7 @@ func greaterThan(vm *VM) error {
 		case float64:
 			res = (float64(v1) > v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("> requires numeric arguments")
 		}
 	case float64:
 		switch v2 := val2.(type) {
@@ -132,16 +132,16 @@ func greaterThan(vm *VM) error {
 		case float64:
 			res = (v1 > v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("> requires numeric arguments")
 		}
 	case string:
 		v2, ok := val2.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("> requires two strings")
 		}
 		res = (v1 > v2)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("> requires numeric or string type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -167,7 +167,7 @@ func lessThanOrEqual(vm *VM) error {
 		case float64:
 			res = (float64(v1) <= v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("<= requires numeric arguments")
 		}
 	case float64:
 		switch v2 := val2.(type) {
@@ -176,16 +176,16 @@ func lessThanOrEqual(vm *VM) error {
 		case float64:
 			res = (v1 <= v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("<= requires numeric arguments")
 		}
 	case string:
 		v2, ok := val2.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("<= requires two strings")
 		}
 		res = (v1 <= v2)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("<= requires numeric or string type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -211,7 +211,7 @@ func greaterThanOrEqual(vm *VM) error {
 		case float64:
 			res = (float64(v1) >= v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg(">= requires numeric arguments")
 		}
 	case float64:
 		switch v2 := val2.(type) {
@@ -220,16 +220,16 @@ func greaterThanOrEqual(vm *VM) error {
 		case float64:
 			res = (v1 >= v2)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg(">= requires numeric arguments")
 		}
 	case string:
 		v2, ok := val2.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg(">= requires two strings")
 		}
 		res = (v1 >= v2)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg(">= requires numeric or string type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -264,7 +264,7 @@ func zeroEqual(vm *VM) error {
 	case float64:
 		res = (v == 0.0)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("0= requires numeric type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -284,7 +284,7 @@ func zeroLessThan(vm *VM) error {
 	case float64:
 		res = (v < 0.0)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("0< requires numeric type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -304,7 +304,7 @@ func zeroGreaterThan(vm *VM) error {
 	case float64:
 		res = (v > 0.0)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("0> requires numeric type")
 	}
 	vm.Push(BoolToForth(res))
 	return nil
@@ -324,7 +324,7 @@ func andOp(vm *VM) error {
 	v1, ok1 := val1.(int)
 	v2, ok2 := val2.(int)
 	if !ok1 || !ok2 {
-		return ErrArgument
+		return ErrArgumentMsg("and requires two integers")
 	}
 
 	vm.Push(v1 & v2)
@@ -345,7 +345,7 @@ func orOp(vm *VM) error {
 	v1, ok1 := val1.(int)
 	v2, ok2 := val2.(int)
 	if !ok1 || !ok2 {
-		return ErrArgument
+		return ErrArgumentMsg("or requires two integers")
 	}
 
 	vm.Push(v1 | v2)
@@ -366,7 +366,7 @@ func xorOp(vm *VM) error {
 	v1, ok1 := val1.(int)
 	v2, ok2 := val2.(int)
 	if !ok1 || !ok2 {
-		return ErrArgument
+		return ErrArgumentMsg("xor requires two integers")
 	}
 
 	vm.Push(v1 ^ v2)
@@ -382,7 +382,7 @@ func invertOp(vm *VM) error {
 
 	v, ok := val.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("invert requires an integer")
 	}
 
 	vm.Push(^v)

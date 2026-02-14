@@ -2,6 +2,8 @@
 
 package forth
 
+import "fmt"
+
 // Array creation words
 
 // bytes creates a byte array of given size
@@ -12,7 +14,7 @@ func bytes(vm *VM) error {
 	}
 	sz, ok := size.(int)
 	if !ok || sz < 0 {
-		return ErrArgument
+		return ErrArgumentMsg("bytes expects non-negative integer size")
 	}
 	arr := make([]byte, sz)
 	vm.Push(arr)
@@ -27,7 +29,7 @@ func ints(vm *VM) error {
 	}
 	sz, ok := size.(int)
 	if !ok || sz < 0 {
-		return ErrArgument
+		return ErrArgumentMsg("ints expects non-negative integer size")
 	}
 	arr := make([]int, sz)
 	vm.Push(arr)
@@ -42,7 +44,7 @@ func floats(vm *VM) error {
 	}
 	sz, ok := size.(int)
 	if !ok || sz < 0 {
-		return ErrArgument
+		return ErrArgumentMsg("floats expects non-negative integer size")
 	}
 	arr := make([]float64, sz)
 	vm.Push(arr)
@@ -57,7 +59,7 @@ func stringArray(vm *VM) error {
 	}
 	sz, ok := size.(int)
 	if !ok || sz < 0 {
-		return ErrArgument
+		return ErrArgumentMsg("strings expects non-negative integer size")
 	}
 	arr := make([]string, sz)
 	vm.Push(arr)
@@ -84,7 +86,7 @@ func arrayGet(vm *VM) error {
 	}
 	index, ok := idx.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("array index must be an integer")
 	}
 	var slice any
 	if varPtr, ok := arr.(*Variable); ok {
@@ -95,26 +97,26 @@ func arrayGet(vm *VM) error {
 	switch a := slice.(type) {
 	case []byte:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		vm.Push(int(a[index]))
 	case []int:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		vm.Push(a[index])
 	case []float64:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		vm.Push(a[index])
 	case []string:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		vm.Push(a[index])
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }
@@ -145,7 +147,7 @@ func arraySet(vm *VM) error {
 	}
 	index, ok := idx.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("array index must be an integer")
 	}
 	var slice any
 	var varPtr *Variable
@@ -158,11 +160,11 @@ func arraySet(vm *VM) error {
 	switch a := slice.(type) {
 	case []byte:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		v, ok := val.(int)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("byte array requires integer value")
 		}
 		a[index] = byte(v)
 		if varPtr != nil {
@@ -170,25 +172,25 @@ func arraySet(vm *VM) error {
 		}
 	case []int:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		switch v := val.(type) {
 		case int:
 			a[index] = v
 		case float64:
 			if v != float64(int(v)) {
-				return ErrArgument // lossy conversion
+				return ErrArgumentMsg("lossy conversion from float to int")
 			}
 			a[index] = int(v)
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("int array requires numeric value")
 		}
 		if varPtr != nil {
 			varPtr.value = a
 		}
 	case []float64:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		switch v := val.(type) {
 		case int:
@@ -196,25 +198,25 @@ func arraySet(vm *VM) error {
 		case float64:
 			a[index] = v
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("float array requires numeric value")
 		}
 		if varPtr != nil {
 			varPtr.value = a
 		}
 	case []string:
 		if index < 0 || index >= len(a) {
-			return ErrIndexOutOfBounds
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
 		v, ok := val.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("string array requires string value")
 		}
 		a[index] = v
 		if varPtr != nil {
 			varPtr.value = a
 		}
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }
@@ -231,14 +233,14 @@ func byteGet(vm *VM) error {
 	}
 	index, ok := idx.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("c@ expects integer index")
 	}
 	a, ok := arr.([]byte)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("c@ expects byte array")
 	}
 	if index < 0 || index >= len(a) {
-		return ErrIndexOutOfBounds
+		return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 	}
 	vm.Push(int(a[index] & 0xff))
 	return nil
@@ -260,18 +262,18 @@ func byteSet(vm *VM) error {
 	}
 	index, ok := idx.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("c! expects integer index")
 	}
 	a, ok := arr.([]byte)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("c! expects byte array")
 	}
 	if index < 0 || index >= len(a) {
-		return ErrIndexOutOfBounds
+		return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 	}
 	v, ok := val.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("c! expects integer value")
 	}
 	a[index] = byte(v & 0xff)
 	return nil
@@ -298,7 +300,7 @@ func arrayPush(vm *VM) error {
 	case []byte:
 		v, ok := val.(int)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("byte array push expects integer")
 		}
 		newArr := append(a, byte(v))
 		if varPtr != nil {
@@ -317,7 +319,7 @@ func arrayPush(vm *VM) error {
 			}
 		case float64:
 			if v != float64(int(v)) {
-				return ErrArgument
+				return ErrArgumentMsg("lossy conversion from float to int")
 			}
 			newArr := append(a, int(v))
 			if varPtr != nil {
@@ -326,7 +328,7 @@ func arrayPush(vm *VM) error {
 				vm.Push(newArr)
 			}
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("int array push expects numeric value")
 		}
 	case []float64:
 		switch v := val.(type) {
@@ -345,12 +347,12 @@ func arrayPush(vm *VM) error {
 				vm.Push(newArr)
 			}
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("float array push expects numeric value")
 		}
 	case []string:
 		v, ok := val.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("string array push expects string")
 		}
 		newArr := append(a, v)
 		if varPtr != nil {
@@ -359,7 +361,7 @@ func arrayPush(vm *VM) error {
 			vm.Push(newArr)
 		}
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }
@@ -378,7 +380,7 @@ func arrayPop(vm *VM) error {
 	switch a := arr.(type) {
 	case []byte:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot pop empty array")
 		}
 		val := a[len(a)-1]
 		newArr := a[:len(a)-1]
@@ -390,7 +392,7 @@ func arrayPop(vm *VM) error {
 		vm.Push(int(val))
 	case []int:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot pop empty array")
 		}
 		val := a[len(a)-1]
 		newArr := a[:len(a)-1]
@@ -402,7 +404,7 @@ func arrayPop(vm *VM) error {
 		vm.Push(val)
 	case []float64:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot pop empty array")
 		}
 		val := a[len(a)-1]
 		newArr := a[:len(a)-1]
@@ -414,7 +416,7 @@ func arrayPop(vm *VM) error {
 		vm.Push(val)
 	case []string:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot pop empty array")
 		}
 		val := a[len(a)-1]
 		newArr := a[:len(a)-1]
@@ -425,7 +427,7 @@ func arrayPop(vm *VM) error {
 		}
 		vm.Push(val)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }
@@ -444,7 +446,7 @@ func arrayShift(vm *VM) error {
 	switch a := arr.(type) {
 	case []byte:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot shift empty array")
 		}
 		val := a[0]
 		newArr := a[1:]
@@ -456,7 +458,7 @@ func arrayShift(vm *VM) error {
 		vm.Push(int(val))
 	case []int:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot shift empty array")
 		}
 		val := a[0]
 		newArr := a[1:]
@@ -468,7 +470,7 @@ func arrayShift(vm *VM) error {
 		vm.Push(val)
 	case []float64:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot shift empty array")
 		}
 		val := a[0]
 		newArr := a[1:]
@@ -480,7 +482,7 @@ func arrayShift(vm *VM) error {
 		vm.Push(val)
 	case []string:
 		if len(a) == 0 {
-			return ErrArgument
+			return ErrArgumentMsg("cannot shift empty array")
 		}
 		val := a[0]
 		newArr := a[1:]
@@ -491,7 +493,7 @@ func arrayShift(vm *VM) error {
 		}
 		vm.Push(val)
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }
@@ -515,7 +517,7 @@ func arrayUnshift(vm *VM) error {
 	case []byte:
 		v, ok := val.(int)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("byte array unshift expects integer")
 		}
 		newArr := append([]byte{byte(v)}, a...)
 		if varPtr != nil {
@@ -534,7 +536,7 @@ func arrayUnshift(vm *VM) error {
 			}
 		case float64:
 			if v != float64(int(v)) {
-				return ErrArgument
+				return ErrArgumentMsg("lossy conversion from float to int")
 			}
 			newArr := append([]int{int(v)}, a...)
 			if varPtr != nil {
@@ -543,7 +545,7 @@ func arrayUnshift(vm *VM) error {
 				vm.Push(newArr)
 			}
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("int array unshift expects numeric value")
 		}
 	case []float64:
 		switch v := val.(type) {
@@ -562,12 +564,12 @@ func arrayUnshift(vm *VM) error {
 				vm.Push(newArr)
 			}
 		default:
-			return ErrArgument
+			return ErrArgumentMsg("float array unshift expects numeric value")
 		}
 	case []string:
 		v, ok := val.(string)
 		if !ok {
-			return ErrArgument
+			return ErrArgumentMsg("string array unshift expects string")
 		}
 		newArr := append([]string{v}, a...)
 		if varPtr != nil {
@@ -576,7 +578,7 @@ func arrayUnshift(vm *VM) error {
 			vm.Push(newArr)
 		}
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }
@@ -600,7 +602,7 @@ func arrayLen(vm *VM) error {
 	case []string:
 		vm.Push(len(a))
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("expected array or variable")
 	}
 	return nil
 }

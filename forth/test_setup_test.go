@@ -3,6 +3,7 @@
 package forth
 
 import (
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -43,7 +44,7 @@ func tstRunForthErr(t *testing.T, name string, code string, expectedErr error, v
 		if markerr := mark(vm); markerr != nil {
 			t.Errorf("Unexpected error: %v", markerr)
 		}
-		if err := vm.Run(tprog, io.Discard); err != expectedErr {
+		if err := vm.Run(tprog, io.Discard); !errors.Is(err, expectedErr) {
 			t.Errorf("Error mismatch. Expected: %v, Got: %v", expectedErr, err)
 		}
 		if !stackEq(vals...) {

@@ -25,15 +25,15 @@ func dictGet(vm *VM) error {
 	}
 	d, ok := dict.(Dict)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected dictionary not found")
 	}
 	k, ok := key.(string)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected string key not found")
 	}
 	val, found := d.m[k]
 	if !found {
-		return ErrKeyNotFound
+		return ErrKeyNotFoundMsg(k)
 	}
 	vm.Push(val)
 	return nil
@@ -55,11 +55,11 @@ func dictSet(vm *VM) error {
 	}
 	d, ok := dict.(Dict)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected dictionary not found")
 	}
 	k, ok := key.(string)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected string key not found")
 	}
 	d.m[k] = val
 	return nil
@@ -77,11 +77,11 @@ func dictDelete(vm *VM) error {
 	}
 	d, ok := dict.(Dict)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected dictionary not found")
 	}
 	k, ok := key.(string)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected string key not found")
 	}
 	delete(d.m, k)
 	return nil
@@ -95,7 +95,7 @@ func dictKeys(vm *VM) error {
 	}
 	d, ok := dict.(Dict)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected dictionary not found")
 	}
 	keys := make([]string, 0, len(d.m))
 	for k := range d.m {
@@ -121,11 +121,11 @@ func dictGetOr(vm *VM) error {
 	}
 	d, ok := dict.(Dict)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected dictionary not found")
 	}
 	k, ok := key.(string)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected string key not found")
 	}
 	if val, found := d.m[k]; found {
 		vm.Push(val)
@@ -147,11 +147,11 @@ func dictGetQuery(vm *VM) error {
 	}
 	d, ok := dict.(Dict)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected dictionary not found")
 	}
 	k, ok := key.(string)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("expected string key not found")
 	}
 	if val, found := d.m[k]; found {
 		vm.Push(val)

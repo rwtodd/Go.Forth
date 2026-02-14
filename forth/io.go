@@ -98,10 +98,10 @@ func read(vm *VM) error {
 		delim, sz = utf8.DecodeRuneInString(delimT)
 		// it needs to be a one-char string
 		if sz != len(delimT) {
-			return ErrArgument
+			return ErrArgumentMsg("read requires a single-character delimiter")
 		}
 	default:
-		return ErrArgument
+		return ErrArgumentMsg("read requires an integer or string delimiter")
 	}
 
 	buf := make([]rune, 0, 20)
@@ -149,7 +149,7 @@ func chrFromInt(vm *VM) error {
 	}
 	chInt, ok := value.(int)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("chr requires an integer")
 	}
 	vm.Push(string([]rune{rune(chInt)}))
 	return nil
@@ -164,12 +164,12 @@ func ordFromStr(vm *VM) error {
 	}
 	chStr, ok := value.(string)
 	if !ok {
-		return ErrArgument
+		return ErrArgumentMsg("ord requires a string")
 	}
 	r, sz := utf8.DecodeRuneInString(chStr)
 	// it needs to be a one-char string
 	if sz != len(chStr) {
-		return ErrArgument
+		return ErrArgumentMsg("ord requires a single-character string")
 	}
 	vm.Push(int(r))
 
