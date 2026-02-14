@@ -82,6 +82,19 @@ func recur(vm *VM) (err error) {
 	return
 }
 
+// TAILCALL jumps to the start of the current function, but
+// bypassing the local variable creation.
+func tailCall(vm *VM) (err error) {
+	// Jump to vm.curdef - 1
+	// Current IP = len(vm.codeseg)
+	// Target IP = len(vm.codeseg) + offset
+	// Target IP = vm.curdef - 1
+	// offset = vm.curdef - 1 - len(vm.codeseg)
+	offset := vm.curdef - 1 - len(vm.codeseg)
+	vm.codeseg = append(vm.codeseg, opBranch, uint16(offset))
+	return
+}
+
 // limit start DO <body> LOOP/+LOOP defines a basic for-style loop.
 // It needs to stash away the limit and current index on the R-stack
 // prior to the loop proper. Then, at the start of the loop, it needs to
@@ -247,6 +260,7 @@ func branchWordsInit(vm *VM) {
 	vm.Define("else", Word{opElse, true})
 	vm.Define("then", Word{opThen, true})
 	vm.Define("recur", Word{recur, true})
+	vm.Define("(tail-call)", Word{tailCall, true})
 	vm.Define("do", Word{opDo, true})
 	vm.Define("(setupDo)", Word{setupDo, false})
 	vm.Define("(testDo)", Word{testDo, false})

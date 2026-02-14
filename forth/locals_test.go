@@ -151,3 +151,38 @@ func TestLocalsMixedControl(t *testing.T) {
 		t.Errorf("Expected output %q, got %q", expected, out.String())
 	}
 }
+
+func TestTailCall(t *testing.T) {
+	vm := NewVM()
+
+	// : tc-count {: n -- :} n . n 1 - dup 0 > IF (tail-call) THEN ;
+	// 5 tc-count -> 5 4 3 2 1
+	// Note: (tail-call) jumps to start, so locals are re-initialized?
+	// Wait, (tail-call) jumps to start of function *body*.
+	// But opCreateLocals is at start of body.
+	// So locals ARE re-initialized from stack.
+	// Let's trace:
+	// 5 tc-count
+	//   opCreateLocals (pops 5->n)
+	//   n . (prints 5)
+	//   n 1 - (4)
+	//   dup 0 > IF (tail-call)
+	//   (tail-call) jumps to opCreateLocals
+	//   opCreateLocals (pops 4 -> n)
+	//   ...
+	//   1 1 - (0)
+	//   dup 0 > (false) -> exit.
+
+	input := ": tc-count {: n :} n . n 1 - dup 0 > IF (tail-call) THEN drop ; 5 tc-count"
+	r := strings.NewReader(input)
+	var out strings.Builder
+
+	if err := vm.Run(r, &out); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	expected := "5 4 3 2 1 "
+	if out.String() != expected {
+		t.Errorf("Expected output %q, got %q", expected, out.String())
+	}
+}

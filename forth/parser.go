@@ -30,7 +30,6 @@ func (c CompositeWord) Run(vm *VM) error {
 	vm.ip = c.start
 
 	// run the internal words
-	// run the internal words
 	var locals []any
 	for {
 		idx := vm.codeseg[vm.ip]
@@ -180,17 +179,10 @@ func stopCompile(vm *VM) error {
 	}
 
 	// Deal with locals if we have them
-	// Since we double-map, len(vm.CompileLocals) is not the count.
-	// We need to find the max index.
+	// Since we double-map, len(vm.CompileLocals) is actually 2x count.
 	numLocals := 0
 	if len(vm.CompileLocals) > 0 {
-		maxIdx := -1
-		for _, v := range vm.CompileLocals {
-			if v > maxIdx {
-				maxIdx = v
-			}
-		}
-		numLocals = maxIdx + 1
+		numLocals = len(vm.CompileLocals) / 2
 	}
 
 	if numLocals > 0 {
@@ -206,43 +198,12 @@ func stopCompile(vm *VM) error {
 		vm.codeseg[vm.curdef] = opCreateLocals
 		vm.codeseg[vm.curdef+1] = uint16(numLocals)
 
-		// 3. Fixup recursion
-		// Any branch that pointed to vm.curdef-1 (which is where recur points)
-		// now points to vm.curdef+1 because of the shift.
-		// However, we want it to point to vm.curdef-1 (the start of the function)
-		// essentially, the relative offset needs to be decreased by 2.
-		// NOTE: The target calculation is: TargetIP = InstIP + Offset
-		// We want NewTargetIP == vm.curdef - 1
-		for i := vm.curdef + 2; i < len(vm.codeseg); i++ {
-			if vm.codeseg[i] == opBranch || vm.codeseg[i] == opBZR {
-				offset := int16(vm.codeseg[i+1])
-				targetIP := i + int(offset)
-				// Check if it targets what used to be the start (now shifted)
-				// The start was vm.curdef.
-				// The RECUR logic calculated offset to hit vm.curdef - 1 (the IP before start)
-				// Because Run loop increments IP.
-				// Wait, let's re-verify RECUR logic.
-				// recur: distance := vm.curdef - len(vm.codeseg) - 1
-				// IP of branch is len(codeseg).
-				// TargetIP = len(codeseg) + distance = curdef - 1.
-				// NextIP = TargetIP + 1 = curdef. Correct.
-
-				// So we are looking for TargetIP == vm.curdef - 1.
-				if targetIP == vm.curdef+1 { // It shifted by 2
-					// We want it to be vm.curdef - 1
-					// NewTarget = OldTarget - 2
-					// NewOffset = OldOffset - 2
-					vm.codeseg[i+1] = uint16(offset - 2)
-				}
-			}
-			// Skip arguments
-			if vm.codeseg[i] == opBranch || vm.codeseg[i] == opBZR ||
-				vm.codeseg[i] == opLitINT || vm.codeseg[i] == opLitUINT ||
-				vm.codeseg[i] == opCreateLocals || vm.codeseg[i] == opLocalGet ||
-				vm.codeseg[i] == opLocalSet {
-				i++
-			}
-		}
+		// 3. No fixup recursion needed!
+		// All jumps (relative offsets) in the body were calculated relative to
+		// instructions *inside* the body.  Their relative distance to their targets
+		// doesn't change when we shift the whole body down by 2.
+		// The only thing that changes is their absolute position, but the *relative*
+		// nature of the jump preserves correctness.
 	}
 
 	vm.Compiling = false
@@ -294,13 +255,7 @@ func compileLocals(vm *VM) error {
 		// Use a simpler approach: finding max index to know next index.
 		idx := 0
 		if len(vm.CompileLocals) > 0 {
-			maxIdx := -1
-			for _, v := range vm.CompileLocals {
-				if v > maxIdx {
-					maxIdx = v
-				}
-			}
-			idx = maxIdx + 1
+			idx = len(vm.CompileLocals) / 2
 		}
 
 		vm.CompileLocals[str] = idx
