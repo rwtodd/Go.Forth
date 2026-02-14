@@ -61,13 +61,19 @@ func (c CompositeWord) Run(vm *VM) error {
 		vm.ip++
 	}
 Done:
+	if len(vm.Rstack) != rstackLen {
 
-	if len(vm.Rstack) < rstackLen {
-		return ErrUnderflowMsg("return stack underflow")
+		if len(vm.Rstack) < rstackLen {
+			return ErrUnderflowMsg("return stack underflow")
+		}
+
+		// clean up the rstack and exit
+		for idx := rstackLen; idx < len(vm.Rstack); idx++ {
+			vm.Rstack[idx] = nil
+		}
+		vm.Rstack = vm.Rstack[:rstackLen]
 	}
 
-	// clean up the rstack and exit
-	vm.Rstack = vm.Rstack[:rstackLen]
 	vm.ip = oldIP
 	return nil
 }

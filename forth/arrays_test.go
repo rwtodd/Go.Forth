@@ -57,21 +57,21 @@ func TestArrayPop(t *testing.T) {
 	// Pop from int array
 	tstRunForth(t, "PopInt", `3 ints 42 over 0 ! @pop drop @len`, 2)
 	// Pop value
-	tstRunForth(t, "PopVal", `2 ints 99 over 1 ! @pop swap drop`, 99)
+	tstRunForth(t, "PopVal", `2 ints 99 over 1 ! @pop nip`, 99)
 }
 
 func TestArrayShift(t *testing.T) {
 	// Shift from int array
 	tstRunForth(t, "ShiftInt", `3 ints 42 over 0 ! @shift drop @len`, 2)
 	// Shift value
-	tstRunForth(t, "ShiftVal", `2 ints 77 over 0 ! @shift swap drop`, 77)
+	tstRunForth(t, "ShiftVal", `2 ints 77 over 0 ! @shift nip`, 77)
 }
 
 func TestArrayUnshift(t *testing.T) {
 	// Unshift to int array
-	tstRunForth(t, "UnshiftInt", `3 ints 88 swap @unshift @len`, 4)
+	tstRunForth(t, "UnshiftInt", `88 3 ints @unshift dup @len swap dup 0 @ swap @shift swap @len`, 4, 88, 88, 3)
 	// Check first element
-	tstRunForth(t, "UnshiftVal", `2 ints 55 swap @unshift 0 @`, 55)
+	tstRunForth(t, "UnshiftVal", `55 2 ints @unshift 0 @`, 55)
 }
 
 func TestArrayLen(t *testing.T) {
@@ -92,9 +92,13 @@ func TestVariable(t *testing.T) {
 
 func TestVariableWithArrays(t *testing.T) {
 	// Push to variable
-	tstRunForth(t, "VarPush", `variable arr 3 ints arr ! 42 arr @push arr @len`, 4)
+	tstRunForth(t, "VarPush", `variable arr 3 ints arr ! 42 arr @push drop arr @len`, 4)
 	// Pop from variable
-	tstRunForth(t, "VarPop", `variable arr 3 ints arr ! arr @pop drop arr @len`, 2)
+	tstRunForth(t, "VarPop", `variable arr 3 ints arr ! arr @pop drop drop arr @len`, 2)
+	// Test chaining @push on variable
+	tstRunForth(t, "VarPushChain", `variable arr 3 ints arr ! 7 arr @push drop 6 arr @push drop 5 arr @push drop arr @len`, 6)
+	tstRunForth(t, "VarPushChain2", `variable arr 3 ints arr ! 7 6 5 arr @push @push @push 5 @`, 7)
+	tstRunForth(t, "VarPushChain3", `variable arr 0 ints arr ! 7 6 5 arr @push @push @push @pop swap @pop swap @pop nip`, 7, 6, 5)
 }
 
 func TestVariableArrayAccess(t *testing.T) {

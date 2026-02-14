@@ -51,7 +51,8 @@ type VM struct {
 	Source *bufio.Reader // our input
 	Sink   io.Writer     // our output
 
-	marker uint16 // place to roll back to when we FORGET
+	marker     uint16 // place to roll back to when we FORGET for words
+	codeMarker int    // place to roll back to when we FORGET for codeseg
 
 	Compiling     bool           // are we compiling right now?
 	CompileLocals map[string]int // locals defined in the current word
@@ -69,19 +70,28 @@ func forget(vm *VM) error {
 	if len(vm.words) < int(vm.marker) {
 		return ErrBadStateMsg("cannot forget below marker")
 	}
+	if len(vm.codeseg) < vm.codeMarker {
+		return ErrBadStateMsg("cannot forget below code marker")
+	}
 
 	for k, v := range vm.dict {
 		if v >= vm.marker {
 			delete(vm.dict, k)
 		}
 	}
+	// Nil out the Run functions in the discarded words to help GC
+	for i := vm.marker; i < uint16(len(vm.words)); i++ {
+		vm.words[i].Run = nil
+	}
 	vm.words = vm.words[:vm.marker]
+	vm.codeseg = vm.codeseg[:vm.codeMarker]
 	return nil
 }
 
 // Mark sets the marker for a future call to Forget
 func mark(vm *VM) error {
 	vm.marker = uint16(len(vm.words))
+	vm.codeMarker = len(vm.codeseg)
 	return nil
 }
 
@@ -144,6 +154,7 @@ func (vm *VM) RPop() (v any, err error) {
 		return
 	}
 	v = vm.Rstack[l]
+	vm.Rstack[l] = nil
 	vm.Rstack = vm.Rstack[:l]
 	return
 }

@@ -372,24 +372,22 @@ Variables provide named storage for any Go value, similar to traditional FORTH v
 
 ### Variable Auto-Update with Arrays
 
-When array operations are performed on variables containing slices, the variable is automatically updated with the modified array. This eliminates manual variable management:
+When array operations are performed on variables containing slices, the variable is automatically updated with the modified array and the variable is returned on the stack for consistent stack pictures:
 
-- **@push** (value variable -- ): Append to array in variable
-  Example: `99 x @push` appends 99 to array in x (x auto-updated)
+- **@push** (value variable -- variable): Append to array in variable
+  Example: `99 x @push` appends 99 to array in x (x auto-updated, x returned)
 
-- **@pop** (variable -- value): Pop from array in variable
-  Example: `x @pop .` pops from array in x (x auto-updated, value printed)
+- **@pop** (variable -- variable value): Pop from array in variable
+  Example: `x @pop drop` pops from array in x (x auto-updated, value discarded, x remains)
 
-- **@shift** (variable -- value): Shift from array in variable
-  Example: `x @shift .` shifts from array in x (x auto-updated, value printed)
+- **@shift** (variable -- variable value): Shift from array in variable
+  Example: `x @shift drop` shifts from array in x (x auto-updated, value discarded, x remains)
 
-- **@unshift** (value variable -- ): Unshift to array in variable
-  Example: `0 x @unshift` prepends 0 to array in x (x auto-updated)
+- **@unshift** (value variable -- variable): Unshift to array in variable
+  Example: `0 x @unshift` prepends 0 to array in x (x auto-updated, x returned)
 
 - **@len** (variable -- length): Get length of array in variable
   Example: `x @len .` prints length of array in x
-
-For manual control, extract the array first: `x @ @push` (standard array behavior).
 
 For manual control, extract the array first: `x @ @push` (standard array behavior).
 

@@ -305,6 +305,7 @@ func arrayPush(vm *VM) error {
 		newArr := append(a, byte(v))
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -314,6 +315,7 @@ func arrayPush(vm *VM) error {
 			newArr := append(a, v)
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -324,6 +326,7 @@ func arrayPush(vm *VM) error {
 			newArr := append(a, int(v))
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -336,6 +339,7 @@ func arrayPush(vm *VM) error {
 			newArr := append(a, float64(v))
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -343,6 +347,7 @@ func arrayPush(vm *VM) error {
 			newArr := append(a, v)
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -357,6 +362,7 @@ func arrayPush(vm *VM) error {
 		newArr := append(a, v)
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -386,6 +392,7 @@ func arrayPop(vm *VM) error {
 		newArr := a[:len(a)-1]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -398,6 +405,7 @@ func arrayPop(vm *VM) error {
 		newArr := a[:len(a)-1]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -410,6 +418,7 @@ func arrayPop(vm *VM) error {
 		newArr := a[:len(a)-1]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -422,6 +431,7 @@ func arrayPop(vm *VM) error {
 		newArr := a[:len(a)-1]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -452,6 +462,7 @@ func arrayShift(vm *VM) error {
 		newArr := a[1:]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -464,6 +475,7 @@ func arrayShift(vm *VM) error {
 		newArr := a[1:]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -476,6 +488,7 @@ func arrayShift(vm *VM) error {
 		newArr := a[1:]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -488,6 +501,7 @@ func arrayShift(vm *VM) error {
 		newArr := a[1:]
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -522,6 +536,7 @@ func arrayUnshift(vm *VM) error {
 		newArr := append([]byte{byte(v)}, a...)
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
@@ -531,6 +546,7 @@ func arrayUnshift(vm *VM) error {
 			newArr := append([]int{v}, a...)
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -541,6 +557,7 @@ func arrayUnshift(vm *VM) error {
 			newArr := append([]int{int(v)}, a...)
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -553,6 +570,7 @@ func arrayUnshift(vm *VM) error {
 			newArr := append([]float64{float64(v)}, a...)
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -560,6 +578,7 @@ func arrayUnshift(vm *VM) error {
 			newArr := append([]float64{v}, a...)
 			if varPtr != nil {
 				varPtr.value = newArr
+				vm.Push(varPtr)
 			} else {
 				vm.Push(newArr)
 			}
@@ -574,6 +593,7 @@ func arrayUnshift(vm *VM) error {
 		newArr := append([]string{v}, a...)
 		if varPtr != nil {
 			varPtr.value = newArr
+			vm.Push(varPtr)
 		} else {
 			vm.Push(newArr)
 		}
