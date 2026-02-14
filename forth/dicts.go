@@ -164,11 +164,11 @@ func dictGetQuery(vm *VM) error {
 
 // dictWordsInit adds dictionary-related words to the VM
 func dictWordsInit(vm *VM) {
-	vm.Define("empty-dict", Word{emptyDict, false})
-	vm.Define("d@", Word{dictGet, false})
-	vm.Define("d!", Word{dictSet, false})
-	vm.Define("ddel", Word{dictDelete, false})
-	vm.Define("dkeys", Word{dictKeys, false})
-	vm.Define("d@|", Word{dictGetOr, false})
-	vm.Define("d@?", Word{dictGetQuery, false})
+	vm.Define(Word{Name: "empty-dict", Run: emptyDict, Immediate: false})
+	vm.Define(Word{Name: "d@", Run: dictGet, Immediate: false})
+	vm.Define(Word{Name: "d!", Run: dictSet, Immediate: false})
+	vm.Define(Word{Name: "ddel", Run: dictDelete, Immediate: false})
+	vm.Define(Word{Name: "dkeys", Run: dictKeys, Immediate: false})
+	vm.Define(Word{Name: "d@|", Run: dictGetOr, Immediate: false})
+	vm.Define(Word{Name: "d@?", Run: dictGetQuery, Immediate: false})
 }

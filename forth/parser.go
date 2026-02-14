@@ -217,7 +217,7 @@ func stopCompile(vm *VM) error {
 
 	// create a composite word out of the current definition
 	cw := CompositeWord{start: vm.curdef}
-	vm.Define(vm.curname, Word{Run: cw.Run, Immediate: false})
+	vm.Define(Word{Name: vm.curname, Run: cw.Run, Immediate: false})
 
 	// Reset locals map
 	vm.CompileLocals = nil
@@ -478,16 +478,16 @@ func bracketTick(vm *VM) error {
 }
 
 func parseWordsInit(vm *VM) {
-	vm.Define("\\", Word{nlComment, true})
-	vm.Define("(", Word{parenComment, true})
-	vm.Define("[", Word{interpret, true})
-	vm.Define("]", Word{stopInterpret, false})
-	vm.Define(":", Word{compile, false})
-	vm.Define(";", Word{stopCompile, true})
-	vm.Define("literal", Word{literal, true})
-	vm.Define("postpone", Word{postpone, true})
-	vm.Define("immediate", Word{makeImmediate, false})
-	vm.Define("'", Word{tick, false})
-	vm.Define("[']", Word{bracketTick, true})
-	vm.Define("{:", Word{compileLocals, true})
+	vm.Define(Word{Name: "\\", Run: nlComment, Immediate: true})
+	vm.Define(Word{Name: "(", Run: parenComment, Immediate: true})
+	vm.Define(Word{Name: "[", Run: interpret, Immediate: true})
+	vm.Define(Word{Name: "]", Run: stopInterpret, Immediate: false})
+	vm.Define(Word{Name: ":", Run: compile, Immediate: false})
+	vm.Define(Word{Name: ";", Run: stopCompile, Immediate: true})
+	vm.Define(Word{Name: "literal", Run: literal, Immediate: true})
+	vm.Define(Word{Name: "postpone", Run: postpone, Immediate: true})
+	vm.Define(Word{Name: "immediate", Run: makeImmediate, Immediate: false})
+	vm.Define(Word{Name: "'", Run: tick, Immediate: false})
+	vm.Define(Word{Name: "[']", Run: bracketTick, Immediate: true})
+	vm.Define(Word{Name: "{:", Run: compileLocals, Immediate: true})
 }

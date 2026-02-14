@@ -25,8 +25,10 @@ const (
 
 // A Word in forth is an operation on the VM
 type Word struct {
+	Name      string
 	Run       func(*VM) error
 	Immediate bool
+	PrevIdx   uint16 // Previous definition index, 0 means no previous
 }
 
 // Variable represents a FORTH variable
@@ -59,8 +61,17 @@ type VM struct {
 }
 
 // Define adds a word to the VM
-func (vm *VM) Define(name string, word Word) {
-	vm.dict[name] = uint16(len(vm.words))
+func (vm *VM) Define(word Word) {
+	if existingIdx, exists := vm.dict[word.Name]; exists {
+		if existingIdx < 10 {
+			// Cannot redefine special opcodes!
+			panic("cannot redefine special opcodes!")
+		}
+		word.PrevIdx = existingIdx
+	} else {
+		word.PrevIdx = 0
+	}
+	vm.dict[word.Name] = uint16(len(vm.words))
 	vm.words = append(vm.words, word)
 }
 
@@ -74,14 +85,17 @@ func forget(vm *VM) error {
 		return ErrBadStateMsg("cannot forget below code marker")
 	}
 
-	for k, v := range vm.dict {
-		if v >= vm.marker {
-			delete(vm.dict, k)
+	// Traverse words backwards from the end and restore previous definitions
+	for i := len(vm.words) - 1; i >= int(vm.marker); i-- {
+		word := &vm.words[i]
+		if word.PrevIdx > 0 {
+			vm.dict[word.Name] = word.PrevIdx
+		} else {
+			delete(vm.dict, word.Name)
 		}
-	}
-	// Nil out the Run functions in the discarded words to help GC
-	for i := vm.marker; i < uint16(len(vm.words)); i++ {
-		vm.words[i].Run = nil
+		// Nil out the Run function to help GC
+		word.Run = nil
+		word.Name = ""
 	}
 	vm.words = vm.words[:vm.marker]
 	vm.codeseg = vm.codeseg[:vm.codeMarker]
@@ -191,16 +205,16 @@ func NewVM() *VM {
 	}
 
 	// SPECIAL... must be specific opcodes to match constants
-	ans.Define("(RET)", Word{nil, false})
-	ans.Define("(createLocals)", Word{nil, false})
-	ans.Define("(localGet)", Word{nil, false})
-	ans.Define("(localSet)", Word{nil, false})
+	ans.Define(Word{Name: "(RET)", Run: nil, Immediate: false})
+	ans.Define(Word{Name: "(createLocals)", Run: nil, Immediate: false})
+	ans.Define(Word{Name: "(localGet)", Run: nil, Immediate: false})
+	ans.Define(Word{Name: "(localSet)", Run: nil, Immediate: false})
 
-	ans.Define("(litINT)", Word{litINT, false})
-	ans.Define("(litUINT)", Word{litUINT, false})
-	ans.Define("compile,", Word{compileComma, false})
-	ans.Define("(branch)", Word{branchUnconditional, false})
-	ans.Define("(bzr)", Word{branchZero, false})
+	ans.Define(Word{Name: "(litINT)", Run: litINT, Immediate: false})
+	ans.Define(Word{Name: "(litUINT)", Run: litUINT, Immediate: false})
+	ans.Define(Word{Name: "compile,", Run: compileComma, Immediate: false})
+	ans.Define(Word{Name: "(branch)", Run: branchUnconditional, Immediate: false})
+	ans.Define(Word{Name: "(bzr)", Run: branchZero, Immediate: false})
 	// END SPECIALS
 
 	branchWordsInit(ans)
@@ -213,11 +227,11 @@ func NewVM() *VM {
 	comparisonWordsInit(ans)
 
 	// these come from this file...
-	ans.Define("mark", Word{mark, false})
-	ans.Define("forget", Word{forget, false})
-	ans.Define("debug.", Word{debugPrint, false})
-	ans.Define("variable", Word{variable, false})
-	ans.Define("execute", Word{execute, false})
+	ans.Define(Word{Name: "mark", Run: mark, Immediate: false})
+	ans.Define(Word{Name: "forget", Run: forget, Immediate: false})
+	ans.Define(Word{Name: "debug.", Run: debugPrint, Immediate: false})
+	ans.Define(Word{Name: "variable", Run: variable, Immediate: false})
+	ans.Define(Word{Name: "execute", Run: execute, Immediate: false})
 	return ans
 }
 

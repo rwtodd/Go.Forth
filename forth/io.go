@@ -214,13 +214,13 @@ func printCR(vm *VM) error {
 
 // ioWordsInit adds the io-related core words to the VM.
 func ioWordsInit(vm *VM) {
-	vm.Define("read", Word{read, false})
-	vm.Define("skip", Word{skip, false})
-	vm.Define("\"", Word{openQuote, true})
-	vm.Define("chr", Word{chrFromInt, false})
-	vm.Define("ord", Word{ordFromStr, false})
-	vm.Define(".s", Word{printStack, false})
-	vm.Define(".", Word{printTop, false})
-	vm.Define("type", Word{printStr, false})
-	vm.Define("cr", Word{printCR, false})
+	vm.Define(Word{Name: "read", Run: read, Immediate: false})
+	vm.Define(Word{Name: "skip", Run: skip, Immediate: false})
+	vm.Define(Word{Name: "\"", Run: openQuote, Immediate: true})
+	vm.Define(Word{Name: "chr", Run: chrFromInt, Immediate: false})
+	vm.Define(Word{Name: "ord", Run: ordFromStr, Immediate: false})
+	vm.Define(Word{Name: ".s", Run: printStack, Immediate: false})
+	vm.Define(Word{Name: ".", Run: printTop, Immediate: false})
+	vm.Define(Word{Name: "type", Run: printStr, Immediate: false})
+	vm.Define(Word{Name: "cr", Run: printCR, Immediate: false})
 }

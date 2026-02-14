@@ -130,16 +130,16 @@ func rdrop(vm *VM) error {
 
 // stackWordsInit adds stack-related core words to the VM
 func stackWordsInit(vm *VM) {
-	vm.Define("dup", Word{dup, false})
-	vm.Define("drop", Word{drop, false})
-	vm.Define("swap", Word{swap, false})
-	vm.Define("over", Word{over, false})
-	vm.Define("rot", Word{rotate, false})
-	vm.Define("-rot", Word{minusRotate, false})
-	vm.Define("nip", Word{nip, false})
-	vm.Define("tuck", Word{tuck, false})
-	vm.Define(">r", Word{toR, false})
-	vm.Define("r>", Word{fromR, false})
-	vm.Define("r@", Word{peekR, false})
-	vm.Define("rdrop", Word{rdrop, false})
+	vm.Define(Word{Name: "dup", Run: dup, Immediate: false})
+	vm.Define(Word{Name: "drop", Run: drop, Immediate: false})
+	vm.Define(Word{Name: "swap", Run: swap, Immediate: false})
+	vm.Define(Word{Name: "over", Run: over, Immediate: false})
+	vm.Define(Word{Name: "rot", Run: rotate, Immediate: false})
+	vm.Define(Word{Name: "-rot", Run: minusRotate, Immediate: false})
+	vm.Define(Word{Name: "nip", Run: nip, Immediate: false})
+	vm.Define(Word{Name: "tuck", Run: tuck, Immediate: false})
+	vm.Define(Word{Name: ">r", Run: toR, Immediate: false})
+	vm.Define(Word{Name: "r>", Run: fromR, Immediate: false})
+	vm.Define(Word{Name: "r@", Run: peekR, Immediate: false})
+	vm.Define(Word{Name: "rdrop", Run: rdrop, Immediate: false})
 }
