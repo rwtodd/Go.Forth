@@ -3,186 +3,53 @@
 package forth
 
 import (
-	"strings"
 	"testing"
 )
 
 func TestLocalsBasic(t *testing.T) {
-	vm := NewVM()
-	vm.Define("test", Word{func(vm *VM) error {
-		vm.Push(1)
-		vm.Push(2)
-		return nil
-	}, false})
-
-	// : add3 {: a b c :} a b c + + . ;
-	input := ": add3 {: a b c :} a b c + + . ; 1 2 3 add3"
-	r := strings.NewReader(input)
-	var out strings.Builder
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "6 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	// : add3 {: a b c :} a b c + + ;
+	// 1 2 3 add3 -> 6
+	tstRunForth(t, "Basic", ": add3 {: a b c :} a b c + + ; 1 2 3 add3", 6)
 }
 
 func TestLocalsModifying(t *testing.T) {
-	vm := NewVM()
-
-	// : inc {: a :} a 1 + a! a . ;
-	input := ": inc {: a :} a 1 + a! a . ; 5 inc"
-	r := strings.NewReader(input)
-	var out strings.Builder
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "6 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	// : inc {: a :} a 1 + a! a ;
+	// 5 inc -> 6
+	tstRunForth(t, "Modifying", ": inc {: a :} a 1 + a! a ; 5 inc", 6)
 }
 
 func TestLocalsUninitialized(t *testing.T) {
-	vm := NewVM()
+	// : test {: a | b :} a b ;
+	// 1 test -> 1 nil
+	tstRunForth(t, "Uninitialized", ": test {: a | b :} a b ; 1 test", 1, nil)
 
-	// : test {: a | b :} a . b . ;
-	// a gets 1. b is local but uninitialized (0 or nil, usually 0/nil in Go slice).
-	// But Pop() returns arbitrary types.
-	// In Go.Forth VM stack is []any.
-	// locals = make([]any, count). So nil.
-	// We need to check what printing nil does.
-	// ' . ' uses fmt.Sprint.
-
-	input := ": test {: a | b :} a . b . ; 1 test"
-	r := strings.NewReader(input)
-	var out strings.Builder
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	// output depends on how nil is printed. Assuming "<nil>"?
-	// Let's verify what happens.
-	// Actually, let's set b explicitely to confirm access.
-	// : test {: a | b :} 5 b! a . b . ; -> 1 5
-
-	input2 := ": test2 {: a | b :} 5 b! a . b . ; 1 test2"
-	r2 := strings.NewReader(input2)
-	out.Reset()
-	if err := vm.Run(r2, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "1 5 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	// : test2 {: a | b :} 5 b! a b ;
+	// 1 test2 -> 1 5
+	tstRunForth(t, "InitializedLater", ": test2 {: a | b :} 5 b! a b ; 1 test2", 1, 5)
 }
 
 func TestLocalsShadowing(t *testing.T) {
-	vm := NewVM()
-
 	// Variable X
-	// : test {: X :} X . ;
+	// : test {: X :} X ;
 	// 5 test -> 5.
 	// X @ -> 0.
-
-	input := "variable X : test {: X :} X . ; 5 test X @"
-	r := strings.NewReader(input)
-	var out strings.Builder // ' . ' prints with space. 'X @' puts on stack.
-	// wait, I need to print X @.
-
-	input = "variable X : test {: X :} X . ; 5 test X @ ."
-	r = strings.NewReader(input)
-	out.Reset()
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "5 0 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	tstRunForth(t, "Shadowing", "variable X : test {: X :} X ; 5 test X @", 5, 0)
 }
 
 func TestLocalsRecursion(t *testing.T) {
-	vm := NewVM()
-
 	// Factorial
 	// : fact {: n :} n 1 <= IF 1 ELSE n n 1 - recur * THEN ;
-
-	input := ": fact {: n :} n 1 <= IF 1 ELSE n n 1 - recur * THEN ; 5 fact ."
-	r := strings.NewReader(input)
-	var out strings.Builder
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "120 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	tstRunForth(t, "Recursion", ": fact {: n :} n 1 <= IF 1 ELSE n n 1 - recur * THEN ; 5 fact", 120)
 }
 
 func TestLocalsMixedControl(t *testing.T) {
-	vm := NewVM()
-
 	// Test locals inside IF (deferred definition)
-	// : test 1 IF {: a :} a . THEN ;
-
-	input := ": test 1 IF {: a :} a . THEN ; 10 test"
-	r := strings.NewReader(input)
-	var out strings.Builder
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "10 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	// : test 1 IF {: a :} a THEN ;
+	tstRunForth(t, "MixedControl", ": test 1 IF {: a :} a THEN ; 10 test", 10)
 }
 
 func TestTailCall(t *testing.T) {
-	vm := NewVM()
-
-	// : tc-count {: n -- :} n . n 1 - dup 0 > IF (tail-call) THEN ;
+	// : tc-count {: n :} n n 1 - dup 0 > IF (tail-call) THEN drop ;
 	// 5 tc-count -> 5 4 3 2 1
-	// Note: (tail-call) jumps to start, so locals are re-initialized?
-	// Wait, (tail-call) jumps to start of function *body*.
-	// But opCreateLocals is at start of body.
-	// So locals ARE re-initialized from stack.
-	// Let's trace:
-	// 5 tc-count
-	//   opCreateLocals (pops 5->n)
-	//   n . (prints 5)
-	//   n 1 - (4)
-	//   dup 0 > IF (tail-call)
-	//   (tail-call) jumps to opCreateLocals
-	//   opCreateLocals (pops 4 -> n)
-	//   ...
-	//   1 1 - (0)
-	//   dup 0 > (false) -> exit.
-
-	input := ": tc-count {: n :} n . n 1 - dup 0 > IF (tail-call) THEN drop ; 5 tc-count"
-	r := strings.NewReader(input)
-	var out strings.Builder
-
-	if err := vm.Run(r, &out); err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := "5 4 3 2 1 "
-	if out.String() != expected {
-		t.Errorf("Expected output %q, got %q", expected, out.String())
-	}
+	tstRunForth(t, "TailCall", ": tc-count {: n :} n n 1 - dup 0 > IF (tail-call) THEN drop ; 5 tc-count", 5, 4, 3, 2, 1)
 }

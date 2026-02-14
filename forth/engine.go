@@ -49,7 +49,7 @@ type VM struct {
 	curname string   // the name of the word we are defining
 
 	Source *bufio.Reader // our input
-	Sink   *bufio.Writer // out output
+	Sink   io.Writer     // our output
 
 	marker uint16 // place to roll back to when we FORGET
 
@@ -214,8 +214,7 @@ func NewVM() *VM {
 // to an output stream 'w'
 func (vm *VM) Run(r io.Reader, w io.Writer) error {
 	vm.Source = bufio.NewReader(r)
-	vm.Sink = bufio.NewWriter(w)
-	defer vm.Sink.Flush()
+	vm.Sink = w
 	vm.Compiling = true
 	return interpret(vm)
 }
