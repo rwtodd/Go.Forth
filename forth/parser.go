@@ -68,9 +68,7 @@ Done:
 		}
 
 		// clean up the rstack and exit
-		for idx := rstackLen; idx < len(vm.Rstack); idx++ {
-			vm.Rstack[idx] = nil
-		}
+		clear(vm.Rstack[rstackLen:])
 		vm.Rstack = vm.Rstack[:rstackLen]
 	}
 
@@ -294,9 +292,9 @@ func compile(vm *VM) (err error) {
 	// STEP 1: read the name
 	var str string
 	str, err = nextToken(vm, buf)
-	vm.curname = str                        // remember the name of the definition
-	vm.curdef = len(vm.codeseg)             // remember the start of the definition
-	vm.CompileLocals = make(map[string]int) // reset locals
+	vm.curname = str            // remember the name of the definition
+	vm.curdef = len(vm.codeseg) // remember the start of the definition
+	clear(vm.CompileLocals)     // reset locals
 
 	for (err == nil) && vm.Compiling {
 		str, err = nextToken(vm, buf)

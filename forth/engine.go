@@ -127,18 +127,68 @@ func (vm *VM) Push(v any) {
 	vm.Stack = append(vm.Stack, v)
 }
 
-// debugPrint prints the codeseg...
+// debugPrint prints the codeseg with smart opcode decoding
 func debugPrint(vm *VM) error {
-	var revdict = make(map[uint16]string)
-	for k, v := range vm.dict {
-		revdict[v] = k
-	}
-	for i, v := range vm.codeseg {
-		opcode, ok := revdict[v]
-		if !ok {
-			opcode = fmt.Sprintf("%d", int16(v))
+	for i := 0; i < len(vm.codeseg); i++ {
+		v := vm.codeseg[i]
+		switch v {
+		case opCreateLocals:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (createLocals %d)\n", i, v, vm.codeseg[i+1])
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (createLocals ???)\n", i, v)
+			}
+		case opLocalGet:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (localGet %d)\n", i, v, vm.codeseg[i+1])
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (localGet ???)\n", i, v)
+			}
+		case opLocalSet:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (localSet %d)\n", i, v, vm.codeseg[i+1])
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (localSet ???)\n", i, v)
+			}
+		case opLitINT:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (litINT %d)\n", i, v, int16(vm.codeseg[i+1]))
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (litINT ???)\n", i, v)
+			}
+		case opLitUINT:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (litUINT %d)\n", i, v, vm.codeseg[i+1])
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (litUINT ???)\n", i, v)
+			}
+		case opBranch:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (branch %d)\n", i, v, int16(vm.codeseg[i+1]))
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (branch ???)\n", i, v)
+			}
+		case opBZR:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (bzr %d)\n", i, v, int16(vm.codeseg[i+1]))
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (bzr ???)\n", i, v)
+			}
+		default:
+			// Regular word call - look up the name
+			if int(v) < len(vm.words) {
+				fmt.Printf("%03d: %d (%s)\n", i, v, vm.words[v].Name)
+			} else {
+				fmt.Printf("%03d: %d (INVALID INDEX %d)\n", i, v, v)
+			}
 		}
-		fmt.Printf("%03d: %d (%s)\n", i, v, opcode)
 	}
 	return nil
 }
@@ -173,10 +223,12 @@ func (vm *VM) RPop() (v any, err error) {
 	return
 }
 
+var iAmAPusher = "-- Value Pusher --" // used for all Value Pushers...
+
 // CreatePusher generates a word in the dictionary, and returns the
 // index for the word.  No name is associated with the word.
 func (vm *VM) CreatePusher(v any) uint16 {
-	vm.words = append(vm.words, Word{Run: func(fvm *VM) error { fvm.Push(v); return nil }, Immediate: false})
+	vm.words = append(vm.words, Word{Name: iAmAPusher, Run: func(fvm *VM) error { fvm.Push(v); return nil }, Immediate: false})
 	return uint16(len(vm.words) - 1)
 }
 
