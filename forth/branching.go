@@ -371,8 +371,97 @@ func branchWordsInit(vm *VM) {
 	vm.Define(Word{Name: "loop", Run: opLoop, Immediate: true})
 	vm.Define(Word{Name: "+loop", Run: opLoopPlus, Immediate: true})
 	vm.Define(Word{Name: "i", Run: getDoI, Immediate: false})
-	vm.Define(Word{Name: "i", Run: getDoI, Immediate: false})
 	vm.Define(Word{Name: "j", Run: getDoJ, Immediate: false})
 	vm.Define(Word{Name: "leave", Run: opLeave, Immediate: true})
 	vm.Define(Word{Name: "exit", Run: opExit, Immediate: true})
+	vm.Define(Word{Name: "begin", Run: opBegin, Immediate: true})
+	vm.Define(Word{Name: "again", Run: opAgain, Immediate: true})
+	vm.Define(Word{Name: "until", Run: opUntil, Immediate: true})
+	vm.Define(Word{Name: "while", Run: opWhile, Immediate: true})
+	vm.Define(Word{Name: "repeat", Run: opRepeat, Immediate: true})
+}
+
+// BEGIN ( -- )
+func opBegin(vm *VM) (err error) {
+	vm.Push(&LoopCtx{
+		StartIP:  len(vm.codeseg),
+		Type:     LoopBegin,
+		BreakOps: make([]int, 0),
+	})
+	return
+}
+
+// resolveBreaks patches any LEAVE/WHILE jumps to point to the current code end
+func resolveBreaks(vm *VM, ctx *LoopCtx) {
+	targetIdx := len(vm.codeseg)
+	for _, breakIP := range ctx.BreakOps {
+		offset := targetIdx - breakIP
+		vm.codeseg[breakIP] = uint16(offset)
+	}
+}
+
+// AGAIN ( -- )
+func opAgain(vm *VM) (err error) {
+	var val interface{}
+	val, err = vm.Pop()
+	if err != nil {
+		return
+	}
+	ctx, ok := val.(*LoopCtx)
+	if !ok || ctx.Type != LoopBegin {
+		return ErrBadStateMsg("AGAIN without BEGIN")
+	}
+
+	// Unconditional jump back to start
+	offset := ctx.StartIP - 1 - len(vm.codeseg)
+	vm.codeseg = append(vm.codeseg, opBranch, uint16(offset))
+
+	resolveBreaks(vm, ctx)
+	return
+}
+
+// UNTIL ( flag -- )
+func opUntil(vm *VM) (err error) {
+	var val interface{}
+	val, err = vm.Pop()
+	if err != nil {
+		return
+	}
+	ctx, ok := val.(*LoopCtx)
+	if !ok || ctx.Type != LoopBegin {
+		return ErrBadStateMsg("UNTIL without BEGIN")
+	}
+
+	// Conditional jump back if false (zero)
+	offset := ctx.StartIP - 1 - len(vm.codeseg)
+	vm.codeseg = append(vm.codeseg, opBZR, uint16(offset))
+
+	resolveBreaks(vm, ctx)
+	return
+}
+
+// WHILE ( flag -- )
+func opWhile(vm *VM) (err error) {
+	// Peek for LoopCtx
+	var ctx *LoopCtx
+	for i := len(vm.Stack) - 1; i >= 0; i-- {
+		if c, ok := vm.Stack[i].(*LoopCtx); ok {
+			ctx = c
+			break
+		}
+	}
+	if ctx == nil || ctx.Type != LoopBegin {
+		return ErrBadStateMsg("WHILE outside of BEGIN loop")
+	}
+
+	// Branch if Zero (false) to exit
+	// Append dummy offset, to be fixed by REPEAT/AGAIN/UNTIL
+	vm.codeseg = append(vm.codeseg, opBZR, 0)
+	ctx.BreakOps = append(ctx.BreakOps, len(vm.codeseg)-1)
+	return
+}
+
+// REPEAT ( -- )
+func opRepeat(vm *VM) error {
+	return opAgain(vm)
 }
