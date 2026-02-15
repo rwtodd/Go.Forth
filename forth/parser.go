@@ -24,56 +24,7 @@ type CompositeWord struct {
 // what I've seen on c.l.f, that kind of behavior doesn't
 // work on all FORTHS anyway.
 func (c CompositeWord) Run(vm *VM) error {
-	// setup the composite word
-	rstackLen := len(vm.Rstack)
-	oldIP := vm.ip
-	vm.ip = c.start
-
-	// run the internal words
-	var locals []any
-	for {
-		idx := vm.codeseg[vm.ip]
-		switch idx {
-		case opReturn:
-			goto Done
-		case opCreateLocals:
-			vm.ip++
-			count := vm.codeseg[vm.ip]
-			locals = make([]any, count)
-		case opLocalGet:
-			vm.ip++
-			lidx := vm.codeseg[vm.ip]
-			vm.Push(locals[lidx])
-		case opLocalSet:
-			vm.ip++
-			lidx := vm.codeseg[vm.ip]
-			val, err := vm.Pop()
-			if err != nil {
-				return err
-			}
-			locals[lidx] = val
-
-		default:
-			if err := vm.words[idx].Run(vm); err != nil {
-				return err
-			}
-		}
-		vm.ip++
-	}
-Done:
-	if len(vm.Rstack) != rstackLen {
-
-		if len(vm.Rstack) < rstackLen {
-			return ErrUnderflowMsg("return stack underflow")
-		}
-
-		// clean up the rstack and exit
-		clear(vm.Rstack[rstackLen:])
-		vm.Rstack = vm.Rstack[:rstackLen]
-	}
-
-	vm.ip = oldIP
-	return nil
+	return vm.RunAt(c.start)
 }
 
 // : ( ')' skip ; immediate
@@ -193,6 +144,22 @@ func makeImmediate(vm *VM) error {
 	return nil
 }
 
+// resolveLocal searches for a local variable in the compilation stack
+func resolveLocal(vm *VM, name string) (depth int, idx int, found bool) {
+	depth = 0
+	// iterate backwards through CompStack
+	for i := len(vm.CompStack) - 1; i >= 0; i-- {
+		ctx := &vm.CompStack[i]
+		if idx, ok := ctx.CompileLocals[name]; ok {
+			return depth, idx, true
+		}
+		if len(ctx.CompileLocals) > 0 {
+			depth++
+		}
+	}
+	return 0, 0, false
+}
+
 // stopCompile (';') terminates a compilation
 func stopCompile(vm *VM) error {
 	ctx := vm.CurrentCompCtx()
@@ -208,7 +175,7 @@ func stopCompile(vm *VM) error {
 	}
 
 	if numLocals > 0 {
-		// Insert opCreateLocals and the count at the beginning of the definition
+		// Insert opEnterScope and the count at the beginning of the definition
 		// The definition starts at ctx.StartIP
 		// We need to shift everything from ctx.StartIP onwards by 2 spots
 
@@ -217,8 +184,11 @@ func stopCompile(vm *VM) error {
 		copy(vm.codeseg[ctx.StartIP+2:], vm.codeseg[ctx.StartIP:])
 
 		// 2. Insert the instruction
-		vm.codeseg[ctx.StartIP] = opCreateLocals
+		vm.codeseg[ctx.StartIP] = opEnterScope
 		vm.codeseg[ctx.StartIP+1] = uint16(numLocals)
+
+		// AND emit opExitScope before opReturn
+		vm.codeseg = append(vm.codeseg, opExitScope)
 	}
 
 	// We pop the context BEFORE finishing, or effectively we are done compiling THIS word.
@@ -284,9 +254,60 @@ func compileLocals(vm *VM) error {
 
 	// Compile initialization code in reverse order
 	for i := len(initList) - 1; i >= 0; i-- {
-		vm.codeseg = append(vm.codeseg, opLocalSet, uint16(initList[i]))
+		vm.codeseg = append(vm.codeseg, opLocalSet, 0, uint16(initList[i]))
 	}
 
+	return nil
+}
+
+// compileLoop manages the compilation loop
+func compileLoop(vm *VM) error {
+	buf := make([]rune, 0, 20)
+	startDepth := len(vm.CompStack)
+
+	for {
+		// Check if we finished the current context (moved up the stack)
+		if len(vm.CompStack) < startDepth {
+			break
+		}
+
+		str, err := nextToken(vm, buf)
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		// Check locals first (shadowing) with depth resolution
+		if depth, idx, ok := resolveLocal(vm, str); ok {
+			if str[len(str)-1] == '!' {
+				vm.codeseg = append(vm.codeseg, opLocalSet, uint16(depth), uint16(idx))
+			} else {
+				vm.codeseg = append(vm.codeseg, opLocalGet, uint16(depth), uint16(idx))
+			}
+			continue
+		}
+
+		// lookup the string in the dictionary
+		if idx, ok := vm.dict[str]; ok {
+			if vm.words[idx].Immediate {
+				err = vm.words[idx].Run(vm)
+				if err != nil {
+					return err
+				}
+				// The immediate word might have popped the context (e.g. ;)
+			} else {
+				vm.codeseg = append(vm.codeseg, idx)
+			}
+		} else {
+			// if it's not in the dict, compile it in as a literal
+			var lit any
+			if lit, err = decodeLiteral(str); err == nil {
+				compileLiteral(vm, lit)
+			}
+		}
+	}
 	return nil
 }
 
@@ -312,56 +333,99 @@ func compile(vm *VM) (err error) {
 
 	startIP := len(vm.codeseg)
 	vm.PushCompCtx(startIP, wordIdx)
-	// Get pointer to current context for loop usage
-	ctx := vm.CurrentCompCtx()
 
-	for err == nil {
-		str, err = nextToken(vm, buf)
-		if err != nil {
-			if err == io.EOF {
-				err = nil
-			}
-			return
-		}
+	return compileLoop(vm)
+}
 
-		// Check locals first (shadowing)
-		if idx, ok := ctx.CompileLocals[str]; ok {
-			if str[len(str)-1] == '!' {
-				vm.codeseg = append(vm.codeseg, opLocalSet, uint16(idx))
-			} else {
-				vm.codeseg = append(vm.codeseg, opLocalGet, uint16(idx))
-			}
-			continue
-		}
+// quotationStart ( [: ) begins a quotation
+func quotationStart(vm *VM) error {
+	if vm.CurrentCompCtx() != nil {
+		// Nested compilation
+		// skip over the body
+		vm.codeseg = append(vm.codeseg, opBranch, 0)
+		jumpIdx := len(vm.codeseg) - 1
 
-		// lookup the string in the dictionary
-		if idx, ok := vm.dict[str]; ok {
-			// SPECIAL CASE FOR ; which is IMMEDIATE
-			// We need to check if it's ; because ; stops compilation loop?
-			// Actually ; is immediate, so it runs. It pops the context.
-			// But we need to break THIS loop.
-			// The issue is: ; runs stopCompile, pops context.
-			// Then we need to see that we are not compiling anymore.
+		// Push the jump index to the stack so ;] can resolve it
+		vm.Push(jumpIdx) // Stack: jumpIdx
 
-			// compile in the word unless it's immediate
-			if vm.words[idx].Immediate {
-				err = vm.words[idx].Run(vm)
-				// If we stopped compiling (e.g. ; was called), break
-				if vm.CurrentCompCtx() == nil {
-					break
-				}
-			} else {
-				vm.codeseg = append(vm.codeseg, idx)
-			}
-		} else {
-			// if it's not in the dict, compile it in as a literal
-			var lit any
-			if lit, err = decodeLiteral(str); err == nil {
-				compileLiteral(vm, lit)
-			}
-		}
+		// Start new context
+		parentIdx := vm.CurrentCompCtx().WordIdx
+		vm.PushCompCtx(len(vm.codeseg), parentIdx)
+	} else {
+		// Top-Level compilation (intepreted quotation)
+		// We need to act like interpreted execution.
+		// We start compiling into codeseg (which is persistent).
+		// We use a dummy WordIdx? Or -1?
+		vm.PushCompCtx(len(vm.codeseg), -1)
+		// And we need to enter the compile loop!
+		return compileLoop(vm)
 	}
-	return
+	return nil
+}
+
+// quotationEnd ( ;] ) ends a quotation
+func quotationEnd(vm *VM) error {
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
+		return ErrBadStateMsg("not compiling ( ;] called outside definition)")
+	}
+
+	// Handle locals (emit opEnterScope/opExitScope)
+	numLocals := 0
+	if len(ctx.CompileLocals) > 0 {
+		numLocals = len(ctx.CompileLocals) / 2
+	}
+
+	if numLocals > 0 {
+		// Insert opEnterScope at start
+		vm.codeseg = append(vm.codeseg, 0, 0)
+		copy(vm.codeseg[ctx.StartIP+2:], vm.codeseg[ctx.StartIP:])
+		vm.codeseg[ctx.StartIP] = opEnterScope
+		vm.codeseg[ctx.StartIP+1] = uint16(numLocals)
+
+		vm.codeseg = append(vm.codeseg, opExitScope)
+	}
+
+	vm.codeseg = append(vm.codeseg, opReturn)
+
+	// Pop context
+	vm.PopCompCtx()
+
+	// Post-processing
+	if vm.CurrentCompCtx() != nil {
+		// We were nested.
+		// 1. Resolve the branch
+		val, err := vm.Pop() // pop jumpIdx
+		if err != nil {
+			return err
+		}
+		jumpIdx := val.(int)
+
+		offset := len(vm.codeseg) - jumpIdx
+		vm.codeseg[jumpIdx] = uint16(offset) // Patch opBranch
+
+		// 2. Emit opPushClosure
+		// We use a relative offset so that code shifting (for locals optimization) doesn't break it.
+		// offset = Target - (CurrentIP + 1)
+		// CurrentIP is index of opPushClosure (len).
+		// Argument is at len+1.
+		offset = ctx.StartIP - (len(vm.codeseg) + 1)
+		vm.codeseg = append(vm.codeseg, opPushClosure, uint16(offset))
+	} else {
+		// We were top-level.
+		// We just finished compiling the closure.
+		// We need to push the Closure object to the stack.
+		// Note: The code is in vm.codeseg.
+		// The HeadScope at runtime will be the current HeadScope?
+		// Yes.
+		closure := Closure{
+			StartIP: ctx.StartIP,
+			Env:     vm.HeadScope,
+		}
+		vm.Push(closure)
+	}
+
+	return nil
 }
 
 // (litINT) reads the next 16-bits from the codeseg and pushes that number on the stack as an int
@@ -518,4 +582,6 @@ func parseWordsInit(vm *VM) {
 	vm.Define(Word{Name: "'", Run: tick, Immediate: false})
 	vm.Define(Word{Name: "[']", Run: bracketTick, Immediate: true})
 	vm.Define(Word{Name: "{:", Run: compileLocals, Immediate: true})
+	vm.Define(Word{Name: "[:", Run: quotationStart, Immediate: true})
+	vm.Define(Word{Name: ";]", Run: quotationEnd, Immediate: true})
 }
