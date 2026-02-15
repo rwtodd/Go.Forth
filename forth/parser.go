@@ -161,7 +161,7 @@ func interpret(vm *VM) (err error) {
 			err = vm.words[idx].Run(vm)
 		} else {
 			// if it's not in the dict, put it on the stack as a literal
-			var lit interface{}
+			var lit any
 			if lit, err = decodeLiteral(str); err == nil {
 				vm.Push(lit)
 			}
@@ -172,7 +172,10 @@ func interpret(vm *VM) (err error) {
 
 // func makeImmediate ('immediate') makes the last defined word immediate
 func makeImmediate(vm *VM) error {
-	vm.words[len(vm.words)-1].Immediate = true
+	if vm.curwordidx < 0 {
+		return ErrBadStateMsg("immediate called without compiling a word!")
+	}
+	vm.words[vm.curwordidx].Immediate = true
 	return nil
 }
 
@@ -213,9 +216,10 @@ func stopCompile(vm *VM) error {
 	vm.Compiling = false
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
-	// create a composite word out of the current definition
+	// create a composite word out of the current definition and finish setting it up
 	cw := CompositeWord{start: vm.curdef}
-	vm.Define(Word{Name: vm.curname, Run: cw.Run, Immediate: false})
+	vm.words[vm.curwordidx].Run = cw.Run
+	vm.AddToDict(uint16(vm.curwordidx))
 
 	// Reset locals map
 	vm.CompileLocals = nil
@@ -289,10 +293,17 @@ func compile(vm *VM) (err error) {
 
 	buf := make([]rune, 0, 20)
 
-	// STEP 1: read the name
+	// STEP 1: read the name and reserve a slot in vm.words
 	var str string
 	str, err = nextToken(vm, buf)
-	vm.curname = str            // remember the name of the definition
+	if err != nil {
+		return err
+	}
+
+	// Reserve a slot for this word
+	vm.curwordidx = len(vm.words)
+	vm.words = append(vm.words, Word{Name: str})
+
 	vm.curdef = len(vm.codeseg) // remember the start of the definition
 	clear(vm.CompileLocals)     // reset locals
 
@@ -325,7 +336,7 @@ func compile(vm *VM) (err error) {
 			}
 		} else {
 			// if it's not in the dict, compile it in as a literal
-			var lit interface{}
+			var lit any
 			if lit, err = decodeLiteral(str); err == nil {
 				compileLiteral(vm, lit)
 			}

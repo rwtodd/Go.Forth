@@ -45,10 +45,10 @@ type VM struct {
 	Stack  []any // the data stack
 	Rstack []any // the return stack
 
-	codeseg []uint16 // where the code for composite (user-defined) words go
-	ip      int      // instruction pointer
-	curdef  int      // the start-index of the word we are currently defining
-	curname string   // the name of the word we are defining
+	codeseg    []uint16 // where the code for composite (user-defined) words go
+	ip         int      // instruction pointer
+	curdef     int      // the start-index of the word we are currently defining
+	curwordidx int      // the index in words of the word we are currently defining
 
 	Source *bufio.Reader // our input
 	Sink   io.Writer     // our output
@@ -62,6 +62,14 @@ type VM struct {
 
 // Define adds a word to the VM
 func (vm *VM) Define(word Word) {
+	vm.words = append(vm.words, word)
+	vm.AddToDict(uint16(len(vm.words) - 1))
+}
+
+// AddToDict adds a word at the given index to the dictionary,
+// handling redefinition logic
+func (vm *VM) AddToDict(idx uint16) {
+	word := &vm.words[idx]
 	if existingIdx, exists := vm.dict[word.Name]; exists {
 		if existingIdx < 10 {
 			// Cannot redefine special opcodes!
@@ -71,8 +79,7 @@ func (vm *VM) Define(word Word) {
 	} else {
 		word.PrevIdx = 0
 	}
-	vm.dict[word.Name] = uint16(len(vm.words))
-	vm.words = append(vm.words, word)
+	vm.dict[word.Name] = idx
 }
 
 // Forget removes words from the VM up to the
@@ -303,6 +310,6 @@ func (vm *VM) ResetState() {
 	vm.Rstack = nil
 	vm.Compiling = true
 	vm.curdef = 0
-	vm.curname = ""
+	vm.curwordidx = -1
 	vm.ip = 0
 }

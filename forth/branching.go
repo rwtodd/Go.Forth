@@ -78,7 +78,7 @@ func opElse(vm *VM) (err error) {
 
 // RECUR just jumps to the start of the current function
 func recur(vm *VM) (err error) {
-	vm.codeseg = append(vm.codeseg, uint16(len(vm.words)))
+	vm.codeseg = append(vm.codeseg, uint16(vm.curwordidx))
 	return
 }
 
