@@ -291,6 +291,8 @@ func NewVM() *VM {
 	ans.Define(Word{Name: "debug.", Run: debugPrint, Immediate: false})
 	ans.Define(Word{Name: "variable", Run: variable, Immediate: false})
 	ans.Define(Word{Name: "execute", Run: execute, Immediate: false})
+
+	_ = mark(ans) // give the vm an initial mark after all the core words are added
 	return ans
 }
 

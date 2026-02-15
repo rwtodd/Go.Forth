@@ -8,7 +8,36 @@ package forth
 // runs, we actually compile code to jump to the
 // target IP _minus_ _one_.  N.B. the jump amount is relative
 // to the BRANCH instruction location, NOT the offset number's
+// target IP _minus_ _one_.  N.B. the jump amount is relative
+// to the BRANCH instruction location, NOT the offset number's
 // location.
+
+type LoopType int
+
+const (
+	LoopDo LoopType = iota
+	LoopBegin
+)
+
+type LoopCtx struct {
+	StartIP   int
+	BreakOps  []int
+	Type      LoopType
+	DoFixupIP int // for DO loops, the initial jump
+}
+
+type ConditionType int
+
+const (
+	CondIf ConditionType = iota
+	CondElse
+)
+
+type ConditionCtx struct {
+	FixupIP int
+	Type    ConditionType
+}
+
 func branchUnconditional(vm *VM) (err error) {
 	num := int16(vm.codeseg[vm.ip+1])
 	vm.ip += int(num)
@@ -40,7 +69,7 @@ func branchZero(vm *VM) (err error) {
 // on the stack for ELSE / THEN to find, and stores
 // a (bzr) with a dummy branch amount in the code stream.
 func opIf(vm *VM) (err error) {
-	vm.Push(len(vm.codeseg) + 1)
+	vm.Push(&ConditionCtx{FixupIP: len(vm.codeseg) + 1, Type: CondIf})
 	vm.codeseg = append(vm.codeseg, opBZR, 32768)
 	return
 }
@@ -51,15 +80,16 @@ func opIf(vm *VM) (err error) {
 func opThen(vm *VM) (err error) {
 	var tos any
 	tos, err = vm.Pop()
-	fixupLoc, ok := tos.(int)
+	if err != nil {
+		return err
+	}
+	ctx, ok := tos.(*ConditionCtx)
 	if ok {
 		// 5    6     7       8   // fixupLoc == 6
 		// BZR  FFFF  PRINT       // Right answer == 2  (8 - 6)
-		vm.codeseg[fixupLoc] = uint16(len(vm.codeseg) - fixupLoc)
+		vm.codeseg[ctx.FixupIP] = uint16(len(vm.codeseg) - ctx.FixupIP)
 	} else {
-		if err == nil {
-			err = ErrBadState
-		}
+		err = ErrBadState
 	}
 	return
 }
@@ -72,7 +102,10 @@ func opElse(vm *VM) (err error) {
 	fupLoc := len(vm.codeseg) + 1
 	vm.codeseg = append(vm.codeseg, opBranch, 32768)
 	err = opThen(vm)
-	vm.Push(fupLoc)
+	if err != nil {
+		return err
+	}
+	vm.Push(&ConditionCtx{FixupIP: fupLoc, Type: CondElse})
 	return
 }
 
@@ -105,7 +138,15 @@ func opDo(vm *VM) (err error) {
 	opSetup := vm.dict["(setupDo)"]
 	opTest := vm.dict["(testDo)"]
 	vm.codeseg = append(vm.codeseg, opSetup, opTest, 32768)
-	vm.Push(len(vm.codeseg) - 1)
+	// We sort of assume start IP is right after the jump, but
+	// for DO loops specifically, the backwards jump goes to the
+	// FIXUP location (addr of 32768), not the instruction after it.
+	// See calculate below: distToStart := ful - ...
+	vm.Push(&LoopCtx{
+		DoFixupIP: len(vm.codeseg) - 1,
+		Type:      LoopDo,
+		StartIP:   len(vm.codeseg), // Not really used for DO, but good to have
+	})
 	return
 }
 
@@ -124,17 +165,18 @@ func opLoopInternal(vm *VM, pullVal bool) (err error) {
 	opRAt := vm.dict["r@"]
 	opRDrop := vm.dict["rdrop"]
 
-	var fixUpLoc any
-	fixUpLoc, err = vm.Pop()
+	var loopCtx any
+	loopCtx, err = vm.Pop()
 	if err != nil {
 		return
 	}
 
-	ful, ok := fixUpLoc.(int)
+	ctx, ok := loopCtx.(*LoopCtx)
 	if !ok {
-		err = ErrBadState
+		return ErrBadState
 	}
 
+	ful := ctx.DoFixupIP
 	distToEnd := len(vm.codeseg) + 3 - ful
 	distToStart := ful - len(vm.codeseg) - 3
 
@@ -144,10 +186,57 @@ func opLoopInternal(vm *VM, pullVal bool) (err error) {
 		distToStart--
 	}
 	vm.codeseg[ful] = uint16(distToEnd)
+
+	// Patch LEAVEs
+	for _, breakIP := range ctx.BreakOps {
+		// Target is distToEnd + whatever needed to reach end of loop from breakIP
+		// Actually target is simply relative offset from breakIP to HERE (start of cleanups)
+		// cleanups are about to be appended.
+		// Current IP = len(vm.codeseg) (before append)
+		// If we append loop logic, cleanups are at:
+		// len(vm.codeseg) + [opRAt?] + opLoopPlus + opBranch + offset
+		// = len + (1 if pullVal) + 3
+
+		targetIdx := len(vm.codeseg) + 3
+
+		offset := targetIdx - breakIP
+		vm.codeseg[breakIP] = uint16(offset)
+	}
+
 	vm.codeseg = append(vm.codeseg, opLoopPlus,
 		opBranch, uint16(distToStart),
 		opRDrop, opRDrop, opRDrop)
 	return
+}
+
+// LEAVE ( -- )
+func opLeave(vm *VM) error {
+	if !vm.Compiling {
+		return ErrBadStateMsg("LEAVE used outside of definition")
+	}
+	var ctx *LoopCtx
+	for i := len(vm.Stack) - 1; i >= 0; i-- {
+		if c, ok := vm.Stack[i].(*LoopCtx); ok {
+			ctx = c
+			break
+		}
+	}
+	if ctx == nil {
+		return ErrBadStateMsg("LEAVE outside of loop")
+	}
+
+	vm.codeseg = append(vm.codeseg, opBranch, 0)
+	ctx.BreakOps = append(ctx.BreakOps, len(vm.codeseg)-1)
+	return nil
+}
+
+// EXIT ( -- )
+func opExit(vm *VM) error {
+	if !vm.Compiling {
+		return ErrBadStateMsg("EXIT used outside of definition")
+	}
+	vm.codeseg = append(vm.codeseg, opReturn)
+	return nil
 }
 
 // (perfLoopPlus) ( amt -- )
@@ -213,7 +302,7 @@ func testDo(vm *VM) (err error) {
 	testval, ok1 := rtest.(int)
 	limval, ok2 := rlim.(int)
 	ival, ok3 := ridx.(int)
-	// fmt.Printf("rtop: %v  test: %v   limit: %v   idx: %v\n",rtop, testval, limval, ival);
+	// fmt.Printf("rtop: %v  test: %v   limit: %v   idx: %v\n", rtop, testval, limval, ival)
 	noloop := true
 	if ok1 && ok2 && ok3 {
 		switch testval {
@@ -268,5 +357,8 @@ func branchWordsInit(vm *VM) {
 	vm.Define(Word{Name: "loop", Run: opLoop, Immediate: true})
 	vm.Define(Word{Name: "+loop", Run: opLoopPlus, Immediate: true})
 	vm.Define(Word{Name: "i", Run: getDoI, Immediate: false})
+	vm.Define(Word{Name: "i", Run: getDoI, Immediate: false})
 	vm.Define(Word{Name: "j", Run: getDoJ, Immediate: false})
+	vm.Define(Word{Name: "leave", Run: opLeave, Immediate: true})
+	vm.Define(Word{Name: "exit", Run: opExit, Immediate: true})
 }

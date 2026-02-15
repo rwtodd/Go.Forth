@@ -312,6 +312,14 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Pushes outer loop index in nested loops.
   Example: `j .`
 
+- **leave**: leave
+  Immediately exits the current loop (DO/LOOP). Execution continues after the loop.
+  Example: `10 0 do i 5 = if leave then loop`
+
+- **exit**: exit
+  Immediately returns from the current word definition.
+  Example: `: test 1 exit 2 ;` -> test pushes 1.
+
 ## Array Words
 
 Arrays are dynamic Go slices supporting bytes, ints, floats, and strings. `@` and `!` provide unified access with type coercion, while `c@` and `c!` are byte-specific with value wrapping.
