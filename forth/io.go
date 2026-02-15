@@ -132,7 +132,7 @@ func openQuote(vm *VM) error {
 		return err
 	}
 	str := string(buf)
-	if vm.Compiling {
+	if vm.CurrentCompCtx() != nil {
 		compileLiteral(vm, str)
 	} else {
 		vm.Push(str)

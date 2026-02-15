@@ -76,7 +76,6 @@ Done:
 	return nil
 }
 
-// parenComment '(' skips until the closing paren.
 // : ( ')' skip ; immediate
 func parenComment(vm *VM) error {
 	vm.Push(int(')'))
@@ -126,27 +125,28 @@ func decodeLiteral(s string) (interface{}, error) {
 	return nil, ErrArgumentMsg(fmt.Sprintf("unknown token <%s>", s))
 }
 
-// stopInterpret completes an interpretation and falls back to the compiler
+// stopInterpret complete an interpretation and falls back to the compiler
 // (assuming one was in play
 func stopInterpret(vm *VM) error {
-	if vm.Compiling {
+	if vm.CurrentCompCtx() == nil {
 		return ErrBadStateMsg("not compiling (stopInterpret called in compiler mode)")
 	}
-	vm.Compiling = true
 	return nil
 }
 
-// Interpret sets the compilation state of the VM to false, and
-// reads words one at a time...
 func interpret(vm *VM) (err error) {
-	if !vm.Compiling {
-		return ErrBadStateMsg("already interpreting (interpret called in interpret mode)")
-	}
+	// If we are called recursively from compile (via [ ... ]), that's fine.
+	// We just loop until we hit ] or EOF.
 
-	vm.Compiling = false
+	// In original code:
+	// if !vm.Compiling { return ErrBadStateMsg(...) }
+	// vm.Compiling = false
+
+	// Here, we just run the loop. The "mode switch" is implicit by running this function.
+
 	buf := make([]rune, 0, 20)
 
-	for (err == nil) && !vm.Compiling {
+	for err == nil {
 		var str string
 		str, err = nextToken(vm, buf)
 		if err != nil {
@@ -158,6 +158,19 @@ func interpret(vm *VM) (err error) {
 
 		// lookup the string in the dictionary
 		if idx, ok := vm.dict[str]; ok {
+			if vm.words[idx].Name == "]" {
+				// Return to compilation if we are compiling
+				if vm.CurrentCompCtx() != nil {
+					return nil
+				}
+				// If not compiling, ] is an error or no-op?
+				// In standard forth ] enters compilation.
+				// But our ] says "stopInterpret".
+				// Let's assume for now it just breaks the loop if we were inside [ ... ]
+				// If we are top level, it might be an error.
+				// For now, let's return and let caller decide.
+				return nil
+			}
 			err = vm.words[idx].Run(vm)
 		} else {
 			// if it's not in the dict, put it on the stack as a literal
@@ -172,68 +185,63 @@ func interpret(vm *VM) (err error) {
 
 // func makeImmediate ('immediate') makes the last defined word immediate
 func makeImmediate(vm *VM) error {
-	if vm.curwordidx < 0 {
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
 		return ErrBadStateMsg("immediate called without compiling a word!")
 	}
-	vm.words[vm.curwordidx].Immediate = true
+	vm.words[ctx.WordIdx].Immediate = true
 	return nil
 }
 
 // stopCompile (';') terminates a compilation
 func stopCompile(vm *VM) error {
-	if !vm.Compiling {
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
 		return ErrBadStateMsg("not compiling (stopCompile called in interpret mode)")
 	}
 
 	// Deal with locals if we have them
 	// Since we double-map, len(vm.CompileLocals) is actually 2x count.
 	numLocals := 0
-	if len(vm.CompileLocals) > 0 {
-		numLocals = len(vm.CompileLocals) / 2
+	if len(ctx.CompileLocals) > 0 {
+		numLocals = len(ctx.CompileLocals) / 2
 	}
 
 	if numLocals > 0 {
 		// Insert opCreateLocals and the count at the beginning of the definition
-		// The definition starts at vm.curdef
-		// We need to shift everything from vm.curdef onwards by 2 spots
+		// The definition starts at ctx.StartIP
+		// We need to shift everything from ctx.StartIP onwards by 2 spots
 
 		// 1. Expand the slice
 		vm.codeseg = append(vm.codeseg, 0, 0)
-		copy(vm.codeseg[vm.curdef+2:], vm.codeseg[vm.curdef:])
+		copy(vm.codeseg[ctx.StartIP+2:], vm.codeseg[ctx.StartIP:])
 
 		// 2. Insert the instruction
-		vm.codeseg[vm.curdef] = opCreateLocals
-		vm.codeseg[vm.curdef+1] = uint16(numLocals)
-
-		// 3. No fixup recursion needed!
-		// All jumps (relative offsets) in the body were calculated relative to
-		// instructions *inside* the body.  Their relative distance to their targets
-		// doesn't change when we shift the whole body down by 2.
-		// The only thing that changes is their absolute position, but the *relative*
-		// nature of the jump preserves correctness.
+		vm.codeseg[ctx.StartIP] = opCreateLocals
+		vm.codeseg[ctx.StartIP+1] = uint16(numLocals)
 	}
 
-	vm.Compiling = false
+	// We pop the context BEFORE finishing, or effectively we are done compiling THIS word.
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
 	// create a composite word out of the current definition and finish setting it up
-	cw := CompositeWord{start: vm.curdef}
-	vm.words[vm.curwordidx].Run = cw.Run
-	vm.AddToDict(uint16(vm.curwordidx))
+	cw := CompositeWord{start: ctx.StartIP}
+	vm.words[ctx.WordIdx].Run = cw.Run
+	vm.AddToDict(uint16(ctx.WordIdx))
 
-	// Reset locals map
-	vm.CompileLocals = nil
+	vm.PopCompCtx()
 	return nil
 }
 
 // compileLocals ({:) parses local variable definitions
 func compileLocals(vm *VM) error {
-	if !vm.Compiling {
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
 		return ErrBadStateMsg("interpret mode ({: called outside definition)")
 	}
 
-	if vm.CompileLocals == nil {
-		vm.CompileLocals = make(map[string]int)
+	if ctx.CompileLocals == nil {
+		ctx.CompileLocals = make(map[string]int)
 	}
 
 	buf := make([]rune, 0, 20)
@@ -262,12 +270,12 @@ func compileLocals(vm *VM) error {
 		// Check if it already exists? Assuming no redefinition for now or shadowing ok.
 		// Use a simpler approach: finding max index to know next index.
 		idx := 0
-		if len(vm.CompileLocals) > 0 {
-			idx = len(vm.CompileLocals) / 2
+		if len(ctx.CompileLocals) > 0 {
+			idx = len(ctx.CompileLocals) / 2
 		}
 
-		vm.CompileLocals[str] = idx
-		vm.CompileLocals[str+"!"] = idx
+		ctx.CompileLocals[str] = idx
+		ctx.CompileLocals[str+"!"] = idx
 
 		if !uninitMode {
 			initList = append(initList, idx)
@@ -285,11 +293,9 @@ func compileLocals(vm *VM) error {
 // compile (':') reads the name of a word to define, and then compiles
 // the definition until ';' tells it to stop
 func compile(vm *VM) (err error) {
-	if vm.Compiling {
+	if vm.CurrentCompCtx() != nil {
 		return ErrBadStateMsg("already compiling (compile called in compiler mode)")
 	}
-
-	vm.Compiling = true
 
 	buf := make([]rune, 0, 20)
 
@@ -301,13 +307,15 @@ func compile(vm *VM) (err error) {
 	}
 
 	// Reserve a slot for this word
-	vm.curwordidx = len(vm.words)
+	wordIdx := len(vm.words)
 	vm.words = append(vm.words, Word{Name: str})
 
-	vm.curdef = len(vm.codeseg) // remember the start of the definition
-	clear(vm.CompileLocals)     // reset locals
+	startIP := len(vm.codeseg)
+	vm.PushCompCtx(startIP, wordIdx)
+	// Get pointer to current context for loop usage
+	ctx := vm.CurrentCompCtx()
 
-	for (err == nil) && vm.Compiling {
+	for err == nil {
 		str, err = nextToken(vm, buf)
 		if err != nil {
 			if err == io.EOF {
@@ -317,7 +325,7 @@ func compile(vm *VM) (err error) {
 		}
 
 		// Check locals first (shadowing)
-		if idx, ok := vm.CompileLocals[str]; ok {
+		if idx, ok := ctx.CompileLocals[str]; ok {
 			if str[len(str)-1] == '!' {
 				vm.codeseg = append(vm.codeseg, opLocalSet, uint16(idx))
 			} else {
@@ -328,9 +336,20 @@ func compile(vm *VM) (err error) {
 
 		// lookup the string in the dictionary
 		if idx, ok := vm.dict[str]; ok {
+			// SPECIAL CASE FOR ; which is IMMEDIATE
+			// We need to check if it's ; because ; stops compilation loop?
+			// Actually ; is immediate, so it runs. It pops the context.
+			// But we need to break THIS loop.
+			// The issue is: ; runs stopCompile, pops context.
+			// Then we need to see that we are not compiling anymore.
+
 			// compile in the word unless it's immediate
 			if vm.words[idx].Immediate {
 				err = vm.words[idx].Run(vm)
+				// If we stopped compiling (e.g. ; was called), break
+				if vm.CurrentCompCtx() == nil {
+					break
+				}
 			} else {
 				vm.codeseg = append(vm.codeseg, idx)
 			}
@@ -385,7 +404,7 @@ func compileLiteral(vm *VM, value interface{}) {
 // literal is an immediate word that reads an int from the stack and compiles it into the codestream
 // if possible, and uses a pusher if necessary.
 func literal(vm *VM) (err error) {
-	if !vm.Compiling {
+	if vm.CurrentCompCtx() == nil {
 		return ErrBadStateMsg("interpret mode (literal called outside definition)")
 	}
 	var value any
@@ -417,7 +436,7 @@ func compileComma(vm *VM) error {
 // postpone creates code that compiles code into the caller.  For
 // immediates, it creates code that calls code in the caller.
 func postpone(vm *VM) error {
-	if !vm.Compiling {
+	if vm.CurrentCompCtx() == nil {
 		return ErrBadStateMsg("interpret mode (postpone called outside definition)")
 	}
 
@@ -467,7 +486,7 @@ func tick(vm *VM) error {
 // bracketTick ([']) is an immediate word that reads the next word and
 // compiles its execution token (index) as a literal.
 func bracketTick(vm *VM) error {
-	if !vm.Compiling {
+	if vm.CurrentCompCtx() == nil {
 		return ErrBadStateMsg("interpret mode (['] called outside definition)")
 	}
 

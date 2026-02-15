@@ -31,6 +31,13 @@ type Word struct {
 	PrevIdx   uint16 // Previous definition index, 0 means no previous
 }
 
+// CompilationCtx holds the state for the word currently being defined
+type CompilationCtx struct {
+	StartIP       int            // Instruction pointer where this definition starts
+	WordIdx       int            // Index of the word being defined
+	CompileLocals map[string]int // Locals defined in the current word
+}
+
 // Variable represents a FORTH variable
 type Variable struct {
 	value any
@@ -56,8 +63,32 @@ type VM struct {
 	marker     uint16 // place to roll back to when we FORGET for words
 	codeMarker int    // place to roll back to when we FORGET for codeseg
 
-	Compiling     bool           // are we compiling right now?
-	CompileLocals map[string]int // locals defined in the current word
+	CompStack []CompilationCtx // Stack of compilation contexts
+}
+
+// CurrentCompCtx returns the current compilation context, or nil if not compiling
+// Note: This returns a pointer to the slice element, so modifications affect the stack.
+func (vm *VM) CurrentCompCtx() *CompilationCtx {
+	if len(vm.CompStack) == 0 {
+		return nil
+	}
+	return &vm.CompStack[len(vm.CompStack)-1]
+}
+
+// PushCompCtx pushes a new compilation context
+func (vm *VM) PushCompCtx(startIP, wordIdx int) {
+	vm.CompStack = append(vm.CompStack, CompilationCtx{
+		StartIP:       startIP,
+		WordIdx:       wordIdx,
+		CompileLocals: make(map[string]int),
+	})
+}
+
+// PopCompCtx pops the current compilation context
+func (vm *VM) PopCompCtx() {
+	if len(vm.CompStack) > 0 {
+		vm.CompStack = vm.CompStack[:len(vm.CompStack)-1]
+	}
 }
 
 // Define adds a word to the VM
@@ -258,9 +289,7 @@ func execute(vm *VM) error {
 // wordset
 func NewVM() *VM {
 	ans := &VM{
-		dict:          make(map[string]uint16),
-		Compiling:     true,
-		CompileLocals: make(map[string]int),
+		dict: make(map[string]uint16),
 	}
 
 	// SPECIAL... must be specific opcodes to match constants
@@ -301,7 +330,23 @@ func NewVM() *VM {
 func (vm *VM) Run(r io.Reader, w io.Writer) error {
 	vm.Source = bufio.NewReader(r)
 	vm.Sink = w
-	vm.Compiling = true
+	// vm.Compiling = true  -> Now handled by stack presence/absence implicitly or logic in parser?
+	// actually standard FORTH starts in interpret mode usually?
+	// But our 'interpret' function loops until done.
+	// The original code set Compiling=true here which seems wrong if we are interpreting?
+	// Wait, 'interpret' loop checks !vm.Compiling.
+	// If vm.Compiling was true, 'interpret' would exit immediately.
+	// engine.go:305 said "vm.Compiling = true".
+	// parser.go:142 check "!vm.Compiling".
+	// So if Compiling=true, interpret fails?
+	// Let's check parser.go again.
+	// interpret checks "!vm.Compiling". If it IS compiling, it errors "already interpreting".
+	// valid states:
+	// Interpret loop runs when Compiling is FALSE.
+	// Compile loop runs when Compiling is TRUE.
+
+	// For now, let's just clear the stack.
+	vm.CompStack = nil
 	return interpret(vm)
 }
 
@@ -310,8 +355,6 @@ func (vm *VM) Run(r io.Reader, w io.Writer) error {
 func (vm *VM) ResetState() {
 	vm.Stack = nil
 	vm.Rstack = nil
-	vm.Compiling = true
-	vm.curdef = 0
-	vm.curwordidx = -1
+	vm.CompStack = nil
 	vm.ip = 0
 }

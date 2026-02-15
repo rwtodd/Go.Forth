@@ -111,19 +111,33 @@ func opElse(vm *VM) (err error) {
 
 // RECUR just jumps to the start of the current function
 func recur(vm *VM) (err error) {
-	vm.codeseg = append(vm.codeseg, uint16(vm.curwordidx))
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
+		return ErrBadStateMsg("recur used outside of definition")
+	}
+	vm.codeseg = append(vm.codeseg, uint16(ctx.WordIdx))
 	return
 }
 
 // TAILCALL jumps to the start of the current function, but
 // bypassing the local variable creation.
+// TAILCALL jumps to the start of the current function, but
+// bypassing the local variable creation.
 func tailCall(vm *VM) (err error) {
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
+		return ErrBadStateMsg("tail-call used outside of definition")
+	}
 	// Jump to vm.curdef - 1
 	// Current IP = len(vm.codeseg)
 	// Target IP = len(vm.codeseg) + offset
+	// Target IP = ctx.StartIP - 1 (why -1? Because standard loop increments IP?)
+	// Actually tailCall jumps to right before logic?
+	// Wait, original logic:
 	// Target IP = vm.curdef - 1
-	// offset = vm.curdef - 1 - len(vm.codeseg)
-	offset := vm.curdef - 1 - len(vm.codeseg)
+	// Let's keep it same: ctx.StartIP - 1
+
+	offset := ctx.StartIP - 1 - len(vm.codeseg)
 	vm.codeseg = append(vm.codeseg, opBranch, uint16(offset))
 	return
 }
@@ -211,7 +225,7 @@ func opLoopInternal(vm *VM, pullVal bool) (err error) {
 
 // LEAVE ( -- )
 func opLeave(vm *VM) error {
-	if !vm.Compiling {
+	if vm.CurrentCompCtx() == nil {
 		return ErrBadStateMsg("LEAVE used outside of definition")
 	}
 	var ctx *LoopCtx
@@ -232,7 +246,7 @@ func opLeave(vm *VM) error {
 
 // EXIT ( -- )
 func opExit(vm *VM) error {
-	if !vm.Compiling {
+	if vm.CurrentCompCtx() == nil {
 		return ErrBadStateMsg("EXIT used outside of definition")
 	}
 	vm.codeseg = append(vm.codeseg, opReturn)
