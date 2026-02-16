@@ -38,3 +38,11 @@ func TestRecurMultipleWords(t *testing.T) {
 	// Each word should recurse to itself, not to other words
 	tstRunForth(t, "RecurMultipleWords", `: test-recur (| n |) n 1 <= IF 1 ELSE n n 1 - recur " hi there!" . * THEN ; : test-recur-2 (| n |) n 10 > IF 1 ELSE n n 1 + recur " hi there!" . * THEN ; 3 test-recur 8 test-recur-2`, 6, 720)
 }
+
+func TestCompileClosure(t *testing.T) {
+	// Tests compiling a closure directly
+	// make-closure pushes a closure that computes 25
+	// runner compiles that closure into itself
+	// executing runner should execute the closure
+	tstRunForth(t, "CompileClosure", `: make-closure [ 5 5 * ] ; : runner [[ make-closure compile, ]] ; runner`, 25)
+}

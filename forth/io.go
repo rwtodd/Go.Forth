@@ -214,13 +214,13 @@ func printCR(vm *VM) error {
 
 // ioWordsInit adds the io-related core words to the VM.
 func ioWordsInit(vm *VM) {
-	vm.Define(Word{Name: "read", Run: read, Immediate: false})
-	vm.Define(Word{Name: "skip", Run: skip, Immediate: false})
-	vm.Define(Word{Name: "\"", Run: openQuote, Immediate: true})
-	vm.Define(Word{Name: "chr", Run: chrFromInt, Immediate: false})
-	vm.Define(Word{Name: "ord", Run: ordFromStr, Immediate: false})
-	vm.Define(Word{Name: ".s", Run: printStack, Immediate: false})
-	vm.Define(Word{Name: ".", Run: printTop, Immediate: false})
-	vm.Define(Word{Name: "type", Run: printStr, Immediate: false})
-	vm.Define(Word{Name: "cr", Run: printCR, Immediate: false})
+	vm.Define(&NativeWord{name: "read", run: read, immediate: false})
+	vm.Define(&NativeWord{name: "skip", run: skip, immediate: false})
+	vm.Define(&NativeWord{name: "\"", run: openQuote, immediate: true})
+	vm.Define(&NativeWord{name: "chr", run: chrFromInt, immediate: false})
+	vm.Define(&NativeWord{name: "ord", run: ordFromStr, immediate: false})
+	vm.Define(&NativeWord{name: ".s", run: printStack, immediate: false})
+	vm.Define(&NativeWord{name: ".", run: printTop, immediate: false})
+	vm.Define(&NativeWord{name: "type", run: printStr, immediate: false})
+	vm.Define(&NativeWord{name: "cr", run: printCR, immediate: false})
 }

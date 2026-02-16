@@ -25,15 +25,65 @@ const (
 	opBZR
 	opCallOffset
 	opRecurClosure
+	opLit
 )
 
-// A Word in forth is an operation on the VM
-type Word struct {
-	Name      string
-	Run       func(*VM) error
-	Immediate bool
-	PrevIdx   uint16 // Previous definition index, 0 means no previous
+// VmMark represents a checkpoint of the VM state for forget operations
+type VmMark struct {
+	WordCount    uint16
+	CodeSegCount int
+	LiteralCount int
 }
+
+// Word is an interface for any operation in the VM
+type Word interface {
+	Name() string
+	IsImmediate() bool
+	SetImmediate(bool)
+	Run(*VM) error
+	Previous() uint16
+	SetPrevious(uint16)
+}
+
+// NativeWord is a Word implemented in Go
+type NativeWord struct {
+	name      string
+	run       func(*VM) error
+	immediate bool
+	prevIdx   uint16
+}
+
+func (w *NativeWord) Name() string {
+	return w.name
+}
+
+func (w *NativeWord) IsImmediate() bool {
+	return w.immediate
+}
+
+func (w *NativeWord) SetImmediate(b bool) {
+	w.immediate = b
+}
+
+func (w *NativeWord) Run(vm *VM) error {
+	return w.run(vm)
+}
+
+func (w *NativeWord) Previous() uint16 {
+	return w.prevIdx
+}
+
+func (w *NativeWord) SetPrevious(idx uint16) {
+	w.prevIdx = idx
+}
+
+// CompositeWord is value-receiver wrapper around a startIP,
+// but to satisfy the interface it might need to be a pointer or struct.
+// Let's make it a struct that implements Word.
+// Note: In parser.go it was just a wrapper struct.
+// We need to define it here or in parser.go. It's better here.
+// But parser.go had CompositeWord.
+// I will move CompositeWord definition here.
 
 // CompilationCtx holds the state for the word currently being defined
 type CompilationCtx struct {
@@ -51,10 +101,69 @@ type Scope struct {
 	Parent *Scope
 }
 
+// ExecutionToken is an interface for something that can be executed
+// ExecutionToken is an interface for something that can be executed
+type ExecutionToken interface {
+	Run(*VM) error
+	Compile(*VM) error
+	Name() string
+}
+
+// WordToken is an ExecutionToken that wraps a dictionary word index
+type WordToken struct {
+	Token uint16
+}
+
+func (wt WordToken) Name() string {
+	return fmt.Sprintf("Token(%d)", wt.Token)
+}
+
+func (wt WordToken) Run(vm *VM) error {
+	if int(wt.Token) >= len(vm.words) {
+		return ErrArgumentMsg("invalid word index in token")
+	}
+	return vm.words[wt.Token].Run(vm)
+}
+
+func (wt WordToken) Compile(vm *VM) error {
+	if int(wt.Token) >= len(vm.words) {
+		return ErrArgumentMsg("invalid word index in token")
+	}
+	vm.codeseg = append(vm.codeseg, wt.Token)
+	return nil
+}
+
 // Closure represents a captured execution context
 type Closure struct {
 	StartIP int
 	Env     *Scope
+}
+
+func (c Closure) Name() string {
+	return fmt.Sprintf("Closure(@%d)", c.StartIP)
+}
+
+func (c Closure) Run(vm *VM) error {
+	oldHead := vm.HeadScope
+	vm.HeadScope = c.Env // Restore captured environment
+	err := vm.RunAt(c.StartIP)
+	vm.HeadScope = oldHead // Restore previous environment
+	return err
+}
+
+func (c Closure) Compile(vm *VM) error {
+	// Compile the closure as a literal
+	vm.literals = append(vm.literals, c)
+	vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
+
+	// Look up EXECUTE
+	execIdx, ok := vm.dict["execute"]
+	if !ok {
+		return ErrBadStateMsg("execute word not found")
+	}
+	// Compile call to EXECUTE
+	vm.codeseg = append(vm.codeseg, execIdx)
+	return nil
 }
 
 // Variable represents a FORTH variable
@@ -65,11 +174,14 @@ type Variable struct {
 // VM is the forth virtual machine state, which all
 // operations take
 type VM struct {
-	words []Word
+	words []Word            // Polymorphic list of words
 	dict  map[string]uint16 // maps from names to indexes in `words'
 
 	Stack  []any // the data stack
 	Rstack []any // the return stack
+
+	literals []any          // Pool of literals to reference by index
+	strMap   map[string]int // Map for string interning
 
 	codeseg    []uint16 // where the code for composite (user-defined) words go
 	ip         int      // instruction pointer
@@ -79,8 +191,7 @@ type VM struct {
 	Source *bufio.Reader // our input
 	Sink   io.Writer     // our output
 
-	marker     uint16 // place to roll back to when we FORGET for words
-	codeMarker int    // place to roll back to when we FORGET for codeseg
+	marker VmMark // place to roll back to when we FORGET
 
 	CompStack []CompilationCtx // Stack of compilation contexts
 	HeadScope *Scope           // Current variable scope
@@ -138,50 +249,61 @@ func (vm *VM) Define(word Word) {
 // AddToDict adds a word at the given index to the dictionary,
 // handling redefinition logic
 func (vm *VM) AddToDict(idx uint16) {
-	word := &vm.words[idx]
-	if existingIdx, exists := vm.dict[word.Name]; exists {
+	word := vm.words[idx]
+	if existingIdx, exists := vm.dict[word.Name()]; exists {
 		if existingIdx < 10 {
 			// Cannot redefine special opcodes!
 			panic("cannot redefine special opcodes!")
 		}
-		word.PrevIdx = existingIdx
+		word.SetPrevious(existingIdx)
 	} else {
-		word.PrevIdx = 0
+		word.SetPrevious(0)
 	}
-	vm.dict[word.Name] = idx
+	vm.dict[word.Name()] = idx
 }
 
 // Forget removes words from the VM up to the
 // vm.marker.
 func forget(vm *VM) error {
-	if len(vm.words) < int(vm.marker) {
+	if len(vm.words) < int(vm.marker.WordCount) {
 		return ErrBadStateMsg("cannot forget below marker")
 	}
-	if len(vm.codeseg) < vm.codeMarker {
+	if len(vm.codeseg) < vm.marker.CodeSegCount {
 		return ErrBadStateMsg("cannot forget below code marker")
 	}
 
 	// Traverse words backwards from the end and restore previous definitions
-	for i := len(vm.words) - 1; i >= int(vm.marker); i-- {
-		word := &vm.words[i]
-		if word.PrevIdx > 0 {
-			vm.dict[word.Name] = word.PrevIdx
+	for i := len(vm.words) - 1; i >= int(vm.marker.WordCount); i-- {
+		word := vm.words[i]
+		if word.Previous() > 0 {
+			vm.dict[word.Name()] = word.Previous()
 		} else {
-			delete(vm.dict, word.Name)
+			delete(vm.dict, word.Name())
 		}
-		// Nil out the Run function to help GC
-		word.Run = nil
-		word.Name = ""
 	}
-	vm.words = vm.words[:vm.marker]
-	vm.codeseg = vm.codeseg[:vm.codeMarker]
+	clear(vm.words[vm.marker.WordCount:])
+	vm.words = vm.words[:vm.marker.WordCount]
+	vm.codeseg = vm.codeseg[:vm.marker.CodeSegCount]
+	if len(vm.literals) >= int(vm.marker.LiteralCount) {
+		// Remove interned strings that are being forgotten
+		for k, v := range vm.strMap {
+			if v >= int(vm.marker.LiteralCount) {
+				delete(vm.strMap, k)
+			}
+		}
+		clear(vm.literals[vm.marker.LiteralCount:])
+		vm.literals = vm.literals[:vm.marker.LiteralCount]
+	}
 	return nil
 }
 
 // Mark sets the marker for a future call to Forget
 func mark(vm *VM) error {
-	vm.marker = uint16(len(vm.words))
-	vm.codeMarker = len(vm.codeseg)
+	vm.marker = VmMark{
+		WordCount:    uint16(len(vm.words)),
+		CodeSegCount: len(vm.codeseg),
+		LiteralCount: len(vm.literals),
+	}
 	return nil
 }
 
@@ -296,10 +418,22 @@ func debugPrint(vm *VM) error {
 			} else {
 				fmt.Printf("%03d: %d (recurClosure ???)\n", i, v)
 			}
+		case opLit:
+			if i+1 < len(vm.codeseg) {
+				idx := vm.codeseg[i+1]
+				val := "???"
+				if int(idx) < len(vm.literals) {
+					val = fmt.Sprintf("%v", vm.literals[idx])
+				}
+				fmt.Printf("%03d: %d (lit #%d = %s)\n", i, v, idx, val)
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (lit ???)\n", i, v)
+			}
 		default:
 			// Regular word call - look up the name
 			if int(v) < len(vm.words) {
-				fmt.Printf("%03d: %d (%s)\n", i, v, vm.words[v].Name)
+				fmt.Printf("%03d: %d (%s)\n", i, v, vm.words[v].Name())
 			} else {
 				fmt.Printf("%03d: %d (INVALID INDEX %d)\n", i, v, v)
 			}
@@ -343,7 +477,7 @@ var iAmAPusher = "-- Value Pusher --" // used for all Value Pushers...
 // CreatePusher generates a word in the dictionary, and returns the
 // index for the word.  No name is associated with the word.
 func (vm *VM) CreatePusher(v any) uint16 {
-	vm.words = append(vm.words, Word{Name: iAmAPusher, Run: func(fvm *VM) error { fvm.Push(v); return nil }, Immediate: false})
+	vm.words = append(vm.words, &NativeWord{name: iAmAPusher, run: func(fvm *VM) error { fvm.Push(v); return nil }, immediate: false})
 	return uint16(len(vm.words) - 1)
 }
 
@@ -353,20 +487,21 @@ func execute(vm *VM) error {
 		return err
 	}
 	switch v := val.(type) {
+	case ExecutionToken:
+		return v.Run(vm)
 	case int:
+		// Support legacy int index execution for now? Or convert?
+		// Plan implies full switch. But raw ints might be on stack?
+		// Let's support ints as word indexes for backward comp if needed,
+		// but ideally everything should be Token.
+		// For now, allow int for safety.
 		idx := v
 		if idx < 0 || idx >= len(vm.words) {
 			return ErrArgumentMsg("invalid word index")
 		}
 		return vm.words[idx].Run(vm)
-	case Closure:
-		oldHead := vm.HeadScope
-		vm.HeadScope = v.Env // Restore captured environment
-		err := vm.RunAt(v.StartIP)
-		vm.HeadScope = oldHead // Restore previous environment
-		return err
 	default:
-		return ErrArgumentMsg("execute requires an integer index or closure")
+		return ErrArgumentMsg("execute requires an execution token or word index")
 	}
 }
 
@@ -467,7 +602,20 @@ func recurClosure(vm *VM) error {
 	err := vm.RunAt(targetIP)
 
 	vm.HeadScope = oldHead
+	vm.HeadScope = oldHead
 	return err
+}
+
+// lit implements the opLit opcode
+// It pushes a value from the literals pool to the stack
+func lit(vm *VM) error {
+	vm.ip++
+	idx := vm.codeseg[vm.ip]
+	if int(idx) >= len(vm.literals) {
+		return ErrBadStateMsg("literal index out of bounds")
+	}
+	vm.Push(vm.literals[idx])
+	return nil
 }
 
 // RunAt runs the code segment starting at the given IP
@@ -504,24 +652,26 @@ func (vm *VM) RunAt(startIP int) error {
 // wordset
 func NewVM() *VM {
 	ans := &VM{
-		dict: make(map[string]uint16),
+		dict:   make(map[string]uint16),
+		strMap: make(map[string]int),
 	}
 
 	// SPECIAL... must be specific opcodes to match constants
-	ans.Define(Word{Name: "(RET)", Run: nil, Immediate: false})
-	ans.Define(Word{Name: "(enterScope)", Run: enterScope, Immediate: false})
-	ans.Define(Word{Name: "(exitScope)", Run: exitScope, Immediate: false})
-	ans.Define(Word{Name: "(localGet)", Run: localGet, Immediate: false})
-	ans.Define(Word{Name: "(localSet)", Run: localSet, Immediate: false})
-	ans.Define(Word{Name: "(pushClosure)", Run: pushClosure, Immediate: false})
+	ans.Define(&NativeWord{name: "(RET)", run: nil, immediate: false})
+	ans.Define(&NativeWord{name: "(enterScope)", run: enterScope, immediate: false})
+	ans.Define(&NativeWord{name: "(exitScope)", run: exitScope, immediate: false})
+	ans.Define(&NativeWord{name: "(localGet)", run: localGet, immediate: false})
+	ans.Define(&NativeWord{name: "(localSet)", run: localSet, immediate: false})
+	ans.Define(&NativeWord{name: "(pushClosure)", run: pushClosure, immediate: false})
 
-	ans.Define(Word{Name: "(litINT)", Run: litINT, Immediate: false})
-	ans.Define(Word{Name: "(litUINT)", Run: litUINT, Immediate: false})
-	ans.Define(Word{Name: "compile,", Run: compileComma, Immediate: false})
-	ans.Define(Word{Name: "(branch)", Run: branchUnconditional, Immediate: false})
-	ans.Define(Word{Name: "(bzr)", Run: branchZero, Immediate: false})
-	ans.Define(Word{Name: "(call-offset)", Run: callOffset, Immediate: false})
-	ans.Define(Word{Name: "(recur-closure)", Run: recurClosure, Immediate: false})
+	ans.Define(&NativeWord{name: "(litINT)", run: litINT, immediate: false})
+	ans.Define(&NativeWord{name: "(litUINT)", run: litUINT, immediate: false})
+	ans.Define(&NativeWord{name: "compile,", run: compileComma, immediate: false})
+	ans.Define(&NativeWord{name: "(branch)", run: branchUnconditional, immediate: false})
+	ans.Define(&NativeWord{name: "(bzr)", run: branchZero, immediate: false})
+	ans.Define(&NativeWord{name: "(call-offset)", run: callOffset, immediate: false})
+	ans.Define(&NativeWord{name: "(recur-closure)", run: recurClosure, immediate: false})
+	ans.Define(&NativeWord{name: "(lit)", run: lit, immediate: false})
 	// END SPECIALS
 
 	branchWordsInit(ans)
@@ -534,12 +684,12 @@ func NewVM() *VM {
 	comparisonWordsInit(ans)
 
 	// these come from this file...
-	ans.Define(Word{Name: "mark", Run: mark, Immediate: false})
-	ans.Define(Word{Name: "forget", Run: forget, Immediate: false})
-	ans.Define(Word{Name: "debug.", Run: debugPrint, Immediate: false})
-	ans.Define(Word{Name: "variable", Run: variable, Immediate: false})
-	ans.Define(Word{Name: "constant", Run: constant, Immediate: false})
-	ans.Define(Word{Name: "execute", Run: execute, Immediate: false})
+	ans.Define(&NativeWord{name: "mark", run: mark, immediate: false})
+	ans.Define(&NativeWord{name: "forget", run: forget, immediate: false})
+	ans.Define(&NativeWord{name: "debug.", run: debugPrint, immediate: false})
+	ans.Define(&NativeWord{name: "variable", run: variable, immediate: false})
+	ans.Define(&NativeWord{name: "constant", run: constant, immediate: false})
+	ans.Define(&NativeWord{name: "execute", run: execute, immediate: false})
 
 	_ = mark(ans) // give the vm an initial mark after all the core words are added
 	return ans

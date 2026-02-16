@@ -2,16 +2,6 @@
 
 package forth
 
-// (branch) branches unconditionally.
-// The int16 relative move is the next word
-// in the codeseg.  N.B. because of the way the interpreter
-// runs, we actually compile code to jump to the
-// target IP _minus_ _one_.  N.B. the jump amount is relative
-// to the BRANCH instruction location, NOT the offset number's
-// target IP _minus_ _one_.  N.B. the jump amount is relative
-// to the BRANCH instruction location, NOT the offset number's
-// location.
-
 type LoopType int
 
 const (
@@ -382,26 +372,26 @@ func getDoJ(vm *VM) error {
 }
 
 func branchWordsInit(vm *VM) {
-	vm.Define(Word{Name: "if", Run: opIf, Immediate: true})
-	vm.Define(Word{Name: "else", Run: opElse, Immediate: true})
-	vm.Define(Word{Name: "then", Run: opThen, Immediate: true})
-	vm.Define(Word{Name: "recur", Run: recur, Immediate: true})
-	vm.Define(Word{Name: "(tail-call)", Run: tailCall, Immediate: true})
-	vm.Define(Word{Name: "do", Run: opDo, Immediate: true})
-	vm.Define(Word{Name: "(setupDo)", Run: setupDo, Immediate: false})
-	vm.Define(Word{Name: "(testDo)", Run: testDo, Immediate: false})
-	vm.Define(Word{Name: "(perfLoopPlus)", Run: performLoopPlus, Immediate: false})
-	vm.Define(Word{Name: "loop", Run: opLoop, Immediate: true})
-	vm.Define(Word{Name: "+loop", Run: opLoopPlus, Immediate: true})
-	vm.Define(Word{Name: "i", Run: getDoI, Immediate: false})
-	vm.Define(Word{Name: "j", Run: getDoJ, Immediate: false})
-	vm.Define(Word{Name: "leave", Run: opLeave, Immediate: true})
-	vm.Define(Word{Name: "exit", Run: opExit, Immediate: true})
-	vm.Define(Word{Name: "begin", Run: opBegin, Immediate: true})
-	vm.Define(Word{Name: "again", Run: opAgain, Immediate: true})
-	vm.Define(Word{Name: "until", Run: opUntil, Immediate: true})
-	vm.Define(Word{Name: "while", Run: opWhile, Immediate: true})
-	vm.Define(Word{Name: "repeat", Run: opRepeat, Immediate: true})
+	vm.Define(&NativeWord{name: "if", run: opIf, immediate: true})
+	vm.Define(&NativeWord{name: "else", run: opElse, immediate: true})
+	vm.Define(&NativeWord{name: "then", run: opThen, immediate: true})
+	vm.Define(&NativeWord{name: "recur", run: recur, immediate: true})
+	vm.Define(&NativeWord{name: "(tail-call)", run: tailCall, immediate: true})
+	vm.Define(&NativeWord{name: "do", run: opDo, immediate: true})
+	vm.Define(&NativeWord{name: "(setupDo)", run: setupDo, immediate: false})
+	vm.Define(&NativeWord{name: "(testDo)", run: testDo, immediate: false})
+	vm.Define(&NativeWord{name: "(perfLoopPlus)", run: performLoopPlus, immediate: false})
+	vm.Define(&NativeWord{name: "loop", run: opLoop, immediate: true})
+	vm.Define(&NativeWord{name: "+loop", run: opLoopPlus, immediate: true})
+	vm.Define(&NativeWord{name: "i", run: getDoI, immediate: false})
+	vm.Define(&NativeWord{name: "j", run: getDoJ, immediate: false})
+	vm.Define(&NativeWord{name: "leave", run: opLeave, immediate: true})
+	vm.Define(&NativeWord{name: "exit", run: opExit, immediate: true})
+	vm.Define(&NativeWord{name: "begin", run: opBegin, immediate: true})
+	vm.Define(&NativeWord{name: "again", run: opAgain, immediate: true})
+	vm.Define(&NativeWord{name: "until", run: opUntil, immediate: true})
+	vm.Define(&NativeWord{name: "while", run: opWhile, immediate: true})
+	vm.Define(&NativeWord{name: "repeat", run: opRepeat, immediate: true})
 }
 
 // BEGIN ( -- )

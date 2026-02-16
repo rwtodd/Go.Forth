@@ -11,11 +11,34 @@ import (
 
 // CompositeWord represents a word made up of opcodes for other defined words
 type CompositeWord struct {
-	start int
+	name      string
+	start     int
+	immediate bool
+	prevIdx   uint16
+}
+
+func (c *CompositeWord) Name() string {
+	return c.name
+}
+
+func (c *CompositeWord) IsImmediate() bool {
+	return c.immediate
+}
+
+func (c *CompositeWord) SetImmediate(b bool) {
+	c.immediate = b
+}
+
+func (c *CompositeWord) Previous() uint16 {
+	return c.prevIdx
+}
+
+func (c *CompositeWord) SetPrevious(idx uint16) {
+	c.prevIdx = idx
 }
 
 // Run on a composite word:
-func (c CompositeWord) Run(vm *VM) error {
+func (c *CompositeWord) Run(vm *VM) error {
 	return vm.RunAt(c.start)
 }
 
@@ -101,7 +124,7 @@ func interpret(vm *VM) (err error) {
 
 		// lookup the string in the dictionary
 		if idx, ok := vm.dict[str]; ok {
-			if vm.words[idx].Name == "]]" {
+			if vm.words[idx].Name() == "]]" {
 				// Return to compilation if we are compiling
 				if vm.CurrentCompCtx() != nil {
 					return nil
@@ -132,7 +155,7 @@ func makeImmediate(vm *VM) error {
 	if ctx == nil {
 		return ErrBadStateMsg("immediate called without compiling a word!")
 	}
-	vm.words[ctx.WordIdx].Immediate = true
+	vm.words[ctx.WordIdx].SetImmediate(true)
 	return nil
 }
 
@@ -187,8 +210,20 @@ func stopCompile(vm *VM) error {
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
 	// create a composite word out of the current definition and finish setting it up
-	cw := CompositeWord{start: ctx.StartIP}
-	vm.words[ctx.WordIdx].Run = cw.Run
+	// We reserved a slot with a dummy NativeWord (or similar) in compile(), now we replace it?
+	// Actually compile() appended a Word. We need to overwrite it with CompositeWord.
+	// But wait, compile() just appended Word{Name: str}. That was a struct.
+	// Now vm.words is []Word interface.
+	// In compile() we need to append a placeholder.
+	// Here we replace accessing the interface.
+
+	// We need to retrieve the name from the existing word BEFORE overwriting it?
+	// Or we have the name in the context? No, context doesn't have name.
+	// The existing word has the name.
+	name := vm.words[ctx.WordIdx].Name()
+
+	cw := &CompositeWord{name: name, start: ctx.StartIP}
+	vm.words[ctx.WordIdx] = cw
 	vm.AddToDict(uint16(ctx.WordIdx))
 
 	vm.PopCompCtx()
@@ -305,7 +340,7 @@ func compileLoop(vm *VM) error {
 
 		// lookup the string in the dictionary
 		if idx, ok := vm.dict[str]; ok {
-			if vm.words[idx].Immediate {
+			if vm.words[idx].IsImmediate() {
 				err = vm.words[idx].Run(vm)
 				if err != nil {
 					return err
@@ -345,7 +380,8 @@ func compile(vm *VM) (err error) {
 
 	// Reserve a slot for this word
 	wordIdx := len(vm.words)
-	vm.words = append(vm.words, Word{Name: str})
+	// We push a placeholder NativeWord so we have a valid object that holds the Name
+	vm.words = append(vm.words, &NativeWord{name: str})
 
 	startIP := len(vm.codeseg)
 	vm.PushCompCtx(startIP, wordIdx)
@@ -558,10 +594,21 @@ func compileLiteral(vm *VM, value interface{}) {
 		case (num >= 0) && (num < 65536):
 			vm.codeseg = append(vm.codeseg, opLitUINT, uint16(num))
 		default:
-			vm.codeseg = append(vm.codeseg, vm.CreatePusher(num))
+			vm.literals = append(vm.literals, num)
+			vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
+		}
+	case string:
+		if idx, ok := vm.strMap[num]; ok {
+			vm.codeseg = append(vm.codeseg, opLit, uint16(idx))
+		} else {
+			vm.literals = append(vm.literals, num)
+			idx := len(vm.literals) - 1
+			vm.strMap[num] = idx
+			vm.codeseg = append(vm.codeseg, opLit, uint16(idx))
 		}
 	default:
-		vm.codeseg = append(vm.codeseg, vm.CreatePusher(value))
+		vm.literals = append(vm.literals, value)
+		vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
 	}
 }
 
@@ -588,8 +635,20 @@ func compileComma(vm *VM) error {
 		return err
 	}
 
-	num, ok := value.(int)
-	if !ok || (num < 0) || (num > len(vm.words)) {
+	// If it's an ExecutionToken, let it compile itself
+	if xt, ok := value.(ExecutionToken); ok {
+		return xt.Compile(vm)
+	}
+
+	// Fallback for raw integers (legacy or manual pushing)
+	var num int
+	if i, ok := value.(int); ok {
+		num = i
+	} else {
+		return ErrArgumentMsg("compile, expects valid word index or execution token")
+	}
+
+	if (num < 0) || (num > len(vm.words)) {
 		return ErrArgumentMsg("compile, expects valid word index")
 	}
 
@@ -618,7 +677,7 @@ func postpone(vm *VM) error {
 	}
 
 	// STEP 2: generate the code
-	if vm.words[opcode].Immediate {
+	if vm.words[opcode].IsImmediate() {
 		// just call the immediate in the caller when it runs
 		vm.codeseg = append(vm.codeseg, opcode)
 	} else {
@@ -643,7 +702,7 @@ func tick(vm *VM) error {
 		return ErrArgumentMsg(fmt.Sprintf("' : word <%s> not found", str))
 	}
 
-	vm.Push(int(idx))
+	vm.Push(WordToken{Token: idx})
 	return nil
 }
 
@@ -665,23 +724,23 @@ func bracketTick(vm *VM) error {
 		return ErrArgumentMsg(fmt.Sprintf("['] : word <%s> not found", str))
 	}
 
-	vm.codeseg = append(vm.codeseg, opLitUINT, idx)
+	compileLiteral(vm, WordToken{Token: idx})
 	return nil
 }
 
 func parseWordsInit(vm *VM) {
-	vm.Define(Word{Name: "\\", Run: nlComment, Immediate: true})
-	vm.Define(Word{Name: "(", Run: parenComment, Immediate: true})
-	vm.Define(Word{Name: "[[", Run: interpret, Immediate: true})
-	vm.Define(Word{Name: "]]", Run: stopInterpret, Immediate: false})
-	vm.Define(Word{Name: ":", Run: compile, Immediate: false})
-	vm.Define(Word{Name: ";", Run: stopCompile, Immediate: true})
-	vm.Define(Word{Name: "literal", Run: literal, Immediate: true})
-	vm.Define(Word{Name: "postpone", Run: postpone, Immediate: true})
-	vm.Define(Word{Name: "immediate", Run: makeImmediate, Immediate: false})
-	vm.Define(Word{Name: "'", Run: tick, Immediate: false})
-	vm.Define(Word{Name: "[']", Run: bracketTick, Immediate: true})
-	vm.Define(Word{Name: "(|", Run: compileLocals, Immediate: true})
-	vm.Define(Word{Name: "[", Run: quotationStart, Immediate: true})
-	vm.Define(Word{Name: "]", Run: quotationEnd, Immediate: true})
+	vm.Define(&NativeWord{name: "\\", run: nlComment, immediate: true})
+	vm.Define(&NativeWord{name: "(", run: parenComment, immediate: true})
+	vm.Define(&NativeWord{name: "[[", run: interpret, immediate: true})
+	vm.Define(&NativeWord{name: "]]", run: stopInterpret, immediate: false})
+	vm.Define(&NativeWord{name: ":", run: compile, immediate: false})
+	vm.Define(&NativeWord{name: ";", run: stopCompile, immediate: true})
+	vm.Define(&NativeWord{name: "literal", run: literal, immediate: true})
+	vm.Define(&NativeWord{name: "postpone", run: postpone, immediate: true})
+	vm.Define(&NativeWord{name: "immediate", run: makeImmediate, immediate: false})
+	vm.Define(&NativeWord{name: "'", run: tick, immediate: false})
+	vm.Define(&NativeWord{name: "[']", run: bracketTick, immediate: true})
+	vm.Define(&NativeWord{name: "(|", run: compileLocals, immediate: true})
+	vm.Define(&NativeWord{name: "[", run: quotationStart, immediate: true})
+	vm.Define(&NativeWord{name: "]", run: quotationEnd, immediate: true})
 }
