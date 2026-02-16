@@ -348,6 +348,76 @@ func execute(vm *VM) error {
 	}
 }
 
+// enterScope implements the opEnterScope opcode
+func enterScope(vm *VM) error {
+	vm.ip++
+	count := vm.codeseg[vm.ip]
+	vm.PushScope(int(count))
+	return nil
+}
+
+// exitScope implements the opExitScope opcode
+func exitScope(vm *VM) error {
+	vm.PopScope()
+	return nil
+}
+
+// localGet implements the opLocalGet opcode
+func localGet(vm *VM) error {
+	depth := vm.codeseg[vm.ip+1]
+	lidx := vm.codeseg[vm.ip+2]
+	vm.ip += 2
+
+	// find the scope at depth
+	scope := vm.HeadScope
+	for i := 0; i < int(depth); i++ {
+		if scope == nil {
+			return ErrBadStateMsg("local variable depth too deep")
+		}
+		scope = scope.Parent
+	}
+	if scope == nil {
+		return ErrBadStateMsg("local variable depth too deep (nil scope)")
+	}
+	vm.Push(scope.Locals[lidx])
+	return nil
+}
+
+// localSet implements the opLocalSet opcode
+func localSet(vm *VM) error {
+	depth := vm.codeseg[vm.ip+1]
+	lidx := vm.codeseg[vm.ip+2]
+	vm.ip += 2
+
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	// find the scope at depth
+	scope := vm.HeadScope
+	for i := 0; i < int(depth); i++ {
+		if scope == nil {
+			return ErrBadStateMsg("local variable depth too deep")
+		}
+		scope = scope.Parent
+	}
+	if scope == nil {
+		return ErrBadStateMsg("local variable depth too deep (nil scope)")
+	}
+	scope.Locals[lidx] = val
+	return nil
+}
+
+// pushClosure implements the opPushClosure opcode
+func pushClosure(vm *VM) error {
+	vm.ip++
+	offset := int16(vm.codeseg[vm.ip])
+	targetIP := vm.ip + int(offset)
+	vm.Push(Closure{StartIP: int(targetIP), Env: vm.HeadScope})
+	return nil
+}
+
 // RunAt runs the code segment starting at the given IP
 func (vm *VM) RunAt(startIP int) error {
 	rstackLen := len(vm.Rstack)
@@ -355,76 +425,16 @@ func (vm *VM) RunAt(startIP int) error {
 	vm.ip = startIP
 
 	for {
-		//bounds check?
-		if vm.ip >= len(vm.codeseg) {
-			break // or error?
-		}
 		idx := vm.codeseg[vm.ip]
-		switch idx {
-		case opReturn:
-			goto Done
-		case opEnterScope:
-			vm.ip++
-			count := vm.codeseg[vm.ip]
-			vm.PushScope(int(count))
-		case opExitScope:
-			vm.PopScope()
-		case opLocalGet:
-			vm.ip++
-			depth := vm.codeseg[vm.ip]
-			vm.ip++
-			lidx := vm.codeseg[vm.ip]
-
-			// find the scope at depth
-			scope := vm.HeadScope
-			for i := 0; i < int(depth); i++ {
-				if scope == nil {
-					return ErrBadStateMsg("local variable depth too deep")
-				}
-				scope = scope.Parent
-			}
-			if scope == nil {
-				return ErrBadStateMsg("local variable depth too deep (nil scope)")
-			}
-			vm.Push(scope.Locals[lidx])
-
-		case opLocalSet:
-			vm.ip++
-			depth := vm.codeseg[vm.ip]
-			vm.ip++
-			lidx := vm.codeseg[vm.ip]
-
-			val, err := vm.Pop()
-			if err != nil {
-				return err
-			}
-
-			// find the scope at depth
-			scope := vm.HeadScope
-			for i := 0; i < int(depth); i++ {
-				if scope == nil {
-					return ErrBadStateMsg("local variable depth too deep")
-				}
-				scope = scope.Parent
-			}
-			if scope == nil {
-				return ErrBadStateMsg("local variable depth too deep (nil scope)")
-			}
-			scope.Locals[lidx] = val
-		case opPushClosure:
-			vm.ip++
-			offset := int16(vm.codeseg[vm.ip])
-			targetIP := vm.ip + int(offset)
-			vm.Push(Closure{StartIP: int(targetIP), Env: vm.HeadScope})
-
-		default:
-			if err := vm.words[idx].Run(vm); err != nil {
-				return err
-			}
+		if idx == opReturn {
+			break
+		}
+		if err := vm.words[idx].Run(vm); err != nil {
+			return err
 		}
 		vm.ip++
 	}
-Done:
+
 	if len(vm.Rstack) != rstackLen {
 		if len(vm.Rstack) < rstackLen {
 			return ErrUnderflowMsg("return stack underflow")
@@ -447,11 +457,11 @@ func NewVM() *VM {
 
 	// SPECIAL... must be specific opcodes to match constants
 	ans.Define(Word{Name: "(RET)", Run: nil, Immediate: false})
-	ans.Define(Word{Name: "(enterScope)", Run: nil, Immediate: false})
-	ans.Define(Word{Name: "(exitScope)", Run: nil, Immediate: false})
-	ans.Define(Word{Name: "(localGet)", Run: nil, Immediate: false})
-	ans.Define(Word{Name: "(localSet)", Run: nil, Immediate: false})
-	ans.Define(Word{Name: "(pushClosure)", Run: nil, Immediate: false})
+	ans.Define(Word{Name: "(enterScope)", Run: enterScope, Immediate: false})
+	ans.Define(Word{Name: "(exitScope)", Run: exitScope, Immediate: false})
+	ans.Define(Word{Name: "(localGet)", Run: localGet, Immediate: false})
+	ans.Define(Word{Name: "(localSet)", Run: localSet, Immediate: false})
+	ans.Define(Word{Name: "(pushClosure)", Run: pushClosure, Immediate: false})
 
 	ans.Define(Word{Name: "(litINT)", Run: litINT, Immediate: false})
 	ans.Define(Word{Name: "(litUINT)", Run: litUINT, Immediate: false})
@@ -486,22 +496,6 @@ func NewVM() *VM {
 func (vm *VM) Run(r io.Reader, w io.Writer) error {
 	vm.Source = bufio.NewReader(r)
 	vm.Sink = w
-	// vm.Compiling = true  -> Now handled by stack presence/absence implicitly or logic in parser?
-	// actually standard FORTH starts in interpret mode usually?
-	// But our 'interpret' function loops until done.
-	// The original code set Compiling=true here which seems wrong if we are interpreting?
-	// Wait, 'interpret' loop checks !vm.Compiling.
-	// If vm.Compiling was true, 'interpret' would exit immediately.
-	// engine.go:305 said "vm.Compiling = true".
-	// parser.go:142 check "!vm.Compiling".
-	// So if Compiling=true, interpret fails?
-	// Let's check parser.go again.
-	// interpret checks "!vm.Compiling". If it IS compiling, it errors "already interpreting".
-	// valid states:
-	// Interpret loop runs when Compiling is FALSE.
-	// Compile loop runs when Compiling is TRUE.
-
-	// For now, let's just clear the stack.
 	vm.CompStack = nil
 	return interpret(vm)
 }
