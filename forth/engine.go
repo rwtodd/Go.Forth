@@ -241,7 +241,7 @@ func debugPrint(vm *VM) error {
 			}
 		case opPushClosure:
 			if i+1 < len(vm.codeseg) {
-				fmt.Printf("%03d: %d (pushClosure %d)\n", i, v, vm.codeseg[i+1])
+				fmt.Printf("%03d: %d (pushClosure %d)\n", i, v, int16(vm.codeseg[i+1]))
 				i++ // skip the data
 			} else {
 				fmt.Printf("%03d: %d (pushClosure ???)\n", i, v)
