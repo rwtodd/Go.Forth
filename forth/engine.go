@@ -20,6 +20,8 @@ const (
 
 	opLitINT
 	opLitUINT
+	opLitFloat16
+	opLitDecimal
 	opCompileComma
 	opBranch
 	opBZR
@@ -390,6 +392,22 @@ func debugPrint(vm *VM) error {
 			} else {
 				fmt.Printf("%03d: %d (litUINT ???)\n", i, v)
 			}
+		case opLitFloat16:
+			if i+1 < len(vm.codeseg) {
+				val := float16ToFloat64(vm.codeseg[i+1])
+				fmt.Printf("%03d: %d (litFloat16 %g)\n", i, v, val)
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (litFloat16 ???)\n", i, v)
+			}
+		case opLitDecimal:
+			if i+1 < len(vm.codeseg) {
+				val := decimal16ToFloat64(vm.codeseg[i+1])
+				fmt.Printf("%03d: %d (litDecimal %g)\n", i, v, val)
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (litDecimal ???)\n", i, v)
+			}
 		case opBranch:
 			if i+1 < len(vm.codeseg) {
 				fmt.Printf("%03d: %d (branch %d)\n", i, v, int16(vm.codeseg[i+1]))
@@ -584,6 +602,24 @@ func callOffset(vm *VM) error {
 	return vm.RunAt(targetIP)
 }
 
+// litFloat16 implements the opLitFloat16 opcode
+// It reads the next 16-bits from the codeseg, interprets as Float16, and pushes float64.
+func litFloat16(vm *VM) error {
+	vm.ip++
+	val := float16ToFloat64(vm.codeseg[vm.ip])
+	vm.Stack = append(vm.Stack, val)
+	return nil
+}
+
+// litDecimal implements the opLitDecimal opcode
+// It reads the next 16-bits from the codeseg, interprets as Decimal, and pushes float64.
+func litDecimal(vm *VM) error {
+	vm.ip++
+	val := decimal16ToFloat64(vm.codeseg[vm.ip])
+	vm.Stack = append(vm.Stack, val)
+	return nil
+}
+
 // recurClosure implements the opRecurClosure opcode
 // It calls a function at a relative offset, but temporarily restores the parent scope
 // to ensure captured variables are accessed correctly during the recursive call.
@@ -666,6 +702,8 @@ func NewVM() *VM {
 
 	ans.Define(&NativeWord{name: "(litINT)", run: litINT, immediate: false})
 	ans.Define(&NativeWord{name: "(litUINT)", run: litUINT, immediate: false})
+	ans.Define(&NativeWord{name: "(litFloat16)", run: litFloat16, immediate: false})
+	ans.Define(&NativeWord{name: "(litDecimal)", run: litDecimal, immediate: false})
 	ans.Define(&NativeWord{name: "compile,", run: compileComma, immediate: false})
 	ans.Define(&NativeWord{name: "(branch)", run: branchUnconditional, immediate: false})
 	ans.Define(&NativeWord{name: "(bzr)", run: branchZero, immediate: false})

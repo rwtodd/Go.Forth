@@ -606,6 +606,15 @@ func compileLiteral(vm *VM, value interface{}) {
 			vm.strMap[num] = idx
 			vm.codeseg = append(vm.codeseg, opLit, uint16(idx))
 		}
+	case float64:
+		if f16, ok := float64ToFloat16(num); ok {
+			vm.codeseg = append(vm.codeseg, opLitFloat16, f16)
+		} else if d16, ok := float64ToDecimal16(num); ok {
+			vm.codeseg = append(vm.codeseg, opLitDecimal, d16)
+		} else {
+			vm.literals = append(vm.literals, value)
+			vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
+		}
 	default:
 		vm.literals = append(vm.literals, value)
 		vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
