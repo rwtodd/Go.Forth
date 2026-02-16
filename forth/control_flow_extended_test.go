@@ -46,12 +46,12 @@ func TestNestedControl(t *testing.T) {
 	// Outer loop breaks
 	// Result: 2
 	tstRunForth(t, "Nested BEGIN Loops", ": test-nested 0 begin dup 2 < while 0 begin dup 2 < while 1 + repeat drop 1 + repeat ; test-nested", 2)
-	tstRunForth(t, "BEGIN inside DO", `: tst ( n -- n' ) 0 swap 0 do i BEGIN dup 10 > IF drop leave THEN {: v :} v + v 1 + AGAIN " DID:" . i . cr LOOP ; 100 tst`, 440)
+	tstRunForth(t, "BEGIN inside DO", `: tst ( n -- n' ) 0 swap 0 do i BEGIN dup 10 > IF drop leave THEN (| v |) v + v 1 + AGAIN " DID:" . i . cr LOOP ; 100 tst`, 440)
 }
 
 func TestLoopWithLocals(t *testing.T) {
 	// Ensure locals work inside BEGIN loops
-	// : test-locals {: a :} 0 begin dup a < while 1 + repeat ;
+	// : test-locals (| a |) 0 begin dup a < while 1 + repeat ;
 	// 3 test-locals -> 3
-	tstRunForth(t, "Locals in BEGIN", ": test-locals {: a :} 0 begin dup a < while 1 + repeat ; 3 test-locals", 3)
+	tstRunForth(t, "Locals in BEGIN", ": test-locals (| a |) 0 begin dup a < while 1 + repeat ; 3 test-locals", 3)
 }

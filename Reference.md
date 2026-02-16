@@ -401,12 +401,14 @@ For manual control, extract the array first: `x @ @push` (standard array behavio
 
 ## Local Variables
 
-Local variables can be defined within a word using the `{: ... :}` syntax. They are scoped to the word execution and are automatically cleaned up when the word exits.
+Local variables can be defined within a word using the `(| ... )` syntax. They are scoped to the word execution and are automatically cleaned up when the word exits.
 
-- **{:** ... **:}**: Define local variables.
+- **(|** ... **|)**: Define local variables.
   - Takes names from the code stream.
-  - Initialized from the stack in reverse order of definition (e.g., `{: a b :}` initializes `b` from TOS, then `a`).
+  - Initialized from the stack in reverse order of definition (e.g., `(| a b |)` initializes `b` from TOS, then `a`).
   - Supports `|` separator for uninitialized locals.
+  - Optionally, `--` followed by comment tokens until `)`.
+  - If no middle `|`, closing is `|)`.
   - Locals shadow global dictionary words.
   - Usage inside the word:
     - `name` pushes the local's value to the stack.
@@ -414,19 +416,24 @@ Local variables can be defined within a word using the `{: ... :}` syntax. They 
 
   Example Basic:
   ```forth
-  : add3 {: a b c :} a b c + + ;
+  : add3 (| a b c |) a b c + + ;
   1 2 3 add3 . \ prints 6
   ```
 
   Example Uninitialized:
   ```forth
-  : swap-locals {: a b | temp :} a temp! b a! temp b! a b ;
+  : swap-locals (| a b | temp ) a temp! b a! temp b! a b ;
   ```
 
   Example Recursion:
   Recursion using `recur` works correctly with locals, creating a new stack frame for variables.
   ```forth
-  : fact {: n :} n 1 <= IF 1 ELSE n n 1 - recur * THEN ;
+  : fact (| n |) n 1 <= IF 1 ELSE n n 1 - recur * THEN ;
+  ```
+
+  Example with comments:
+  ```forth
+  : test (| a b | c -- result ) a b + c * ;
   ```
 
 ## Dictionary Words

@@ -15,14 +15,6 @@ type CompositeWord struct {
 }
 
 // Run on a composite word:
-// don't use the typical return stack... use
-// Go's stack instead... this can make the RStack
-// an auto-cleaned scratch space, which doesn't have
-// to remain balanced like a typical FORTH.
-// The only downside is you can't play return-address games
-// to force double exits or delayed tail calls.  But, from
-// what I've seen on c.l.f, that kind of behavior doesn't
-// work on all FORTHS anyway.
 func (c CompositeWord) Run(vm *VM) error {
 	return vm.RunAt(c.start)
 }
@@ -203,11 +195,11 @@ func stopCompile(vm *VM) error {
 	return nil
 }
 
-// compileLocals ({:) parses local variable definitions
+// compileLocals ((|) parses local variable definitions
 func compileLocals(vm *VM) error {
 	ctx := vm.CurrentCompCtx()
 	if ctx == nil {
-		return ErrBadStateMsg("interpret mode ({: called outside definition)")
+		return ErrBadStateMsg("interpret mode ((| called outside definition)")
 	}
 
 	if ctx.CompileLocals == nil {
@@ -224,12 +216,33 @@ func compileLocals(vm *VM) error {
 			return err
 		}
 
-		if str == ":}" {
-			break
-		}
-		if str == "|" {
-			uninitMode = true
-			continue
+		if !uninitMode {
+			if str == "|)" {
+				break
+			} else if str == "|" {
+				uninitMode = true
+				continue
+			} else if str == "--" || str == ")" {
+				return ErrArgumentMsg("invalid token in locals list: " + str)
+			}
+		} else {
+			if str == ")" {
+				break
+			} else if str == "--" {
+				// skip comment tokens until )
+				for {
+					str2, err2 := nextToken(vm, buf)
+					if err2 != nil {
+						return err2
+					}
+					if str2 == ")" {
+						break
+					}
+				}
+				break
+			} else if str == "|)" || str == "|" {
+				return ErrArgumentMsg("invalid token in locals list: " + str)
+			}
 		}
 
 		if str[len(str)-1] == '!' {
@@ -237,13 +250,14 @@ func compileLocals(vm *VM) error {
 		}
 
 		// define the local
-		// Check if it already exists? Assuming no redefinition for now or shadowing ok.
-		// Use a simpler approach: finding max index to know next index.
 		idx := 0
 		if len(ctx.CompileLocals) > 0 {
 			idx = len(ctx.CompileLocals) / 2
 		}
 
+		if _, exists := ctx.CompileLocals[str]; exists {
+			return ErrArgumentMsg("duplicate local variable: " + str)
+		}
 		ctx.CompileLocals[str] = idx
 		ctx.CompileLocals[str+"!"] = idx
 
@@ -581,7 +595,7 @@ func parseWordsInit(vm *VM) {
 	vm.Define(Word{Name: "immediate", Run: makeImmediate, Immediate: false})
 	vm.Define(Word{Name: "'", Run: tick, Immediate: false})
 	vm.Define(Word{Name: "[']", Run: bracketTick, Immediate: true})
-	vm.Define(Word{Name: "{:", Run: compileLocals, Immediate: true})
+	vm.Define(Word{Name: "(|", Run: compileLocals, Immediate: true})
 	vm.Define(Word{Name: "[:", Run: quotationStart, Immediate: true})
 	vm.Define(Word{Name: ";]", Run: quotationEnd, Immediate: true})
 }

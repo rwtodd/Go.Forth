@@ -12,31 +12,31 @@ func TestQuotationsBasic(t *testing.T) {
 }
 
 func TestQuotationsCapture(t *testing.T) {
-	// : test {: a :} [: a ;] execute ; 10 test -> 10
-	tstRunForth(t, "CaptureSimple", ": test {: a :} [: a ;] execute ; 10 test", 10)
+	// : test (| a |) [: a ;] execute ; 10 test -> 10
+	tstRunForth(t, "CaptureSimple", ": test (| a |) [: a ;] execute ; 10 test", 10)
 }
 
 func TestQuotationsCaptureNested(t *testing.T) {
-	// : test {: a :} [: {: b :} [: a b + ;] execute ;] execute ; 10 20 test -> 30
-	tstRunForth(t, "CaptureNested", ": test {: a :} [: {: b :} [: a b + ;] execute ;] execute ; 10 20 test", 30)
+	// : test (| a |) [: (| b |) [: a b + ;] execute ;] execute ; 10 20 test -> 30
+	tstRunForth(t, "CaptureNested", ": test (| a |) [: (| b |) [: a b + ;] execute ;] execute ; 10 20 test", 30)
 }
 
 func TestQuotationsModify(t *testing.T) {
-	// : test {: a :} [: 20 a! ;] execute a ; 10 test -> 20
-	tstRunForth(t, "ModifyCapture", ": test {: a :} [: 20 a! ;] execute a ; 10 test", 20)
+	// : test (| a |) [: 20 a! ;] execute a ; 10 test -> 20
+	tstRunForth(t, "ModifyCapture", ": test (| a |) [: 20 a! ;] execute a ; 10 test", 20)
 }
 
 func TestQuotationsEscaping(t *testing.T) {
-	// : make-adder {: n :} [: n + ;] ;
+	// : make-adder (| n |) [: n + ;] ;
 	// 5 make-adder constant add5
 	// 10 add5 execute -> 15
-	tstRunForth(t, "EscapingClosure", ": make-adder {: n :} [: n + ;] ; 5 make-adder constant add5 10 add5 execute", 15)
+	tstRunForth(t, "EscapingClosure", ": make-adder (| n |) [: n + ;] ; 5 make-adder constant add5 10 add5 execute", 15)
 }
 
 func TestQuotationsShadowing(t *testing.T) {
-	// : test {: a :} [: {: a :} a ;] execute a ;
+	// : test (| a |) [: (| a |) a ;] execute a ;
 	// 10 20 test -> 10 20 (Outer=20, Inner=10)
-	tstRunForth(t, "Shadowing", ": test {: a :} [: {: a :} a ;] execute a ; 10 20 test", 10, 20)
+	tstRunForth(t, "Shadowing", ": test (| a |) [: (| a |) a ;] execute a ; 10 20 test", 10, 20)
 }
 
 func TestRecursionInClosure(t *testing.T) {

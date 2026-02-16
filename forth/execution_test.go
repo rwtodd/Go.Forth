@@ -25,7 +25,7 @@ func TestCompileComma(t *testing.T) {
 }
 
 func TestRecurWithLiterals(t *testing.T) {
-	tstRunForth(t, "RecurWithLiterals", `: test-recur {: n :} n 1 <= IF 1 ELSE n n 1 - recur " hi there!" . * THEN ; 3 test-recur`, 6)
+	tstRunForth(t, "RecurWithLiterals", `: test-recur (| n |) n 1 <= IF 1 ELSE n n 1 - recur " hi there!" . * THEN ; 3 test-recur`, 6)
 }
 
 func TestShadowing(t *testing.T) {
@@ -36,5 +36,5 @@ func TestShadowing(t *testing.T) {
 func TestRecurMultipleWords(t *testing.T) {
 	// Test that RECUR works correctly in multiple different words
 	// Each word should recurse to itself, not to other words
-	tstRunForth(t, "RecurMultipleWords", `: test-recur {: n :} n 1 <= IF 1 ELSE n n 1 - recur " hi there!" . * THEN ; : test-recur-2 {: n :} n 10 > IF 1 ELSE n n 1 + recur " hi there!" . * THEN ; 3 test-recur 8 test-recur-2`, 6, 720)
+	tstRunForth(t, "RecurMultipleWords", `: test-recur (| n |) n 1 <= IF 1 ELSE n n 1 - recur " hi there!" . * THEN ; : test-recur-2 (| n |) n 10 > IF 1 ELSE n n 1 + recur " hi there!" . * THEN ; 3 test-recur 8 test-recur-2`, 6, 720)
 }
