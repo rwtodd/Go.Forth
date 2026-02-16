@@ -319,6 +319,8 @@ func compileLoop(vm *VM) error {
 			var lit any
 			if lit, err = decodeLiteral(str); err == nil {
 				compileLiteral(vm, lit)
+			} else {
+				return err
 			}
 		}
 	}
@@ -366,6 +368,19 @@ func quotationStart(vm *VM) error {
 		parentIdx := vm.CurrentCompCtx().WordIdx
 		vm.PushCompCtx(len(vm.codeseg), parentIdx)
 		vm.CurrentCompCtx().IsClosure = true
+
+		// Capture stack depth to clean up any partial compilation artifacts (like IF/ELSE contexts) on error
+		stackDepth := len(vm.Stack)
+
+		if err := compileLoop(vm); err != nil {
+			vm.PopCompCtx()
+			// Restore stack to remove any compilation artifacts
+			if len(vm.Stack) > stackDepth {
+				vm.Stack = vm.Stack[:stackDepth]
+			}
+			vm.Pop() // pop the jumpIdx
+			return err
+		}
 	} else {
 		// Top-Level compilation (intepreted quotation)
 		// We need to act like interpreted execution.

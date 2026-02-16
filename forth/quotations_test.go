@@ -51,6 +51,14 @@ func TestRecursionInClosure(t *testing.T) {
 	tstRunForth(t, "(tail-call) in a Closure",
 		`: quot+tc (| n | count -- count ) 0 count! " Starting n:" . n . cr [ (| n |) count 1 + count!  n 0 > IF n . cr n 1 - (tail-call) ELSE " done!" . cr THEN ] n swap execute " Bye!" type cr count ;
 	   4 quot+tc`, 5)
+	tstRunForth(t, "Factorial w/RECUR", ": tst ( n -- fact ) 1 swap [ dup 1 = IF drop ELSE tuck * swap 1 - RECUR THEN ] execute ; 5 tst", 120)
+	tstRunForth(t, "Factorial w/(tail-call)", ": tst ( n -- fact ) 1 swap [ dup 1 = IF drop ELSE tuck * swap 1 - (tail-call) THEN ] execute ; 5 tst", 120)
+	tstRunForth(t, "Factorial w/RECUR and locals", ": tst2 ( n -- fact ) 1 swap [ (| acc n |) n 1 = IF acc ELSE acc n * n 1 - RECUR THEN ] execute ; 5 tst2", 120)
+	tstRunForth(t, "Factorial w/(tail-call) and locals", ": tst2 ( n -- fact ) 1 swap [ (| acc n |) n 1 = IF acc ELSE acc n * n 1 - (tail-call) THEN ] execute ; 5 tst2", 120)
+}
+
+func TestGarbageWordDetected(t *testing.T) {
+	tstRunForthErr(t, "Garbage Word Detected", ": tst3 ( n -- fact ) 1 swap [ (| acc n |) n 1 = IF acc ELSE acc n * n vbardg  RECUR THEN ] execute ;", ErrArgument)
 }
 
 func TestRecursionNoLocals(t *testing.T) {
