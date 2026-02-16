@@ -33,12 +33,15 @@ func TestQuotationsEscaping(t *testing.T) {
 	// 5 make-adder constant add5
 	// 10 add5 execute -> 15
 	tstRunForth(t, "EscapingClosure", ": make-adder (| n |) [ n + ] ; 5 make-adder constant add5 10 add5 execute", 15)
+	tstRunForth(t, "Counter", ": counter (| n |) [ n dup 1 + n! ] ; 1 counter dup execute swap execute", 1, 2)
+	tstRunForth(t, "2 Counters", ": counter (| n |) [ n dup 1 + n! ] ; 1 counter 100 counter execute swap execute", 100, 1)
 }
 
 func TestQuotationsShadowing(t *testing.T) {
 	// : test (| a |) [ (| a |) a ] execute a ;
 	// 10 20 test -> 10 20 (Outer=20, Inner=10)
 	tstRunForth(t, "Shadowing", ": test (| a |) [ (| a |) a ] execute a ; 10 20 test", 10, 20)
+	tstRunForth(t, "Shadowing 2", ": test (| a |) a [ (| a |) 10 a + a! a ] execute a ; 10 test", 20, 10)
 }
 
 func TestRecursionInClosure(t *testing.T) {
