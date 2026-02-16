@@ -365,44 +365,121 @@ func quotationStart(vm *VM) error {
 		// Start new context
 		parentIdx := vm.CurrentCompCtx().WordIdx
 		vm.PushCompCtx(len(vm.codeseg), parentIdx)
+		vm.CurrentCompCtx().IsClosure = true
 	} else {
 		// Top-Level compilation (intepreted quotation)
 		// We need to act like interpreted execution.
 		// We start compiling into codeseg (which is persistent).
 		// We use a dummy WordIdx? Or -1?
 		vm.PushCompCtx(len(vm.codeseg), -1)
+		vm.CurrentCompCtx().IsClosure = true
 		// And we need to enter the compile loop!
 		return compileLoop(vm)
 	}
 	return nil
 }
 
-// quotationEnd ( ;] ) ends a quotation
+// quotationEnd ends a quotation definition
 func quotationEnd(vm *VM) error {
 	ctx := vm.CurrentCompCtx()
-	if ctx == nil {
-		return ErrBadStateMsg("not compiling ( ;] called outside definition)")
+	if !ctx.IsClosure {
+		// Should be impossible given how quotationStart works
+		return ErrBadStateMsg("quotationEnd called on non-closure")
 	}
 
-	// Handle locals (emit opEnterScope/opExitScope)
-	numLocals := 0
-	if len(ctx.CompileLocals) > 0 {
-		numLocals = len(ctx.CompileLocals) / 2
-	}
+	// Before we finish, we might need to insert locals handling code
+	// at the BEGINNING of the closure.
+	hasLocals := len(ctx.CompileLocals) > 0
+	shift := 0
+	if hasLocals {
+		// We need to inject opEnterScope <count> at ctx.StartIP
+		// This will shift all subsequent code by 2 words.
+		shift = 2
 
-	if numLocals > 0 {
-		// Insert opEnterScope at start
+		// Find max local index
+		maxIdx := -1
+		for _, idx := range ctx.CompileLocals {
+			if idx > maxIdx {
+				maxIdx = idx
+			}
+		}
+		numLocals := maxIdx + 1
+
+		// Inject code!
+		// We need to shift vm.codeseg from StartIP onwards.
 		vm.codeseg = append(vm.codeseg, 0, 0)
 		copy(vm.codeseg[ctx.StartIP+2:], vm.codeseg[ctx.StartIP:])
 		vm.codeseg[ctx.StartIP] = opEnterScope
 		vm.codeseg[ctx.StartIP+1] = uint16(numLocals)
 
+		// Also append opExitScope at the END
 		vm.codeseg = append(vm.codeseg, opExitScope)
 	}
 
-	vm.codeseg = append(vm.codeseg, opReturn)
+	// FIXUPS!
+	// Now we know if we have locals, and where the code starts.
+	// We need to fixup all RECUR and TAIL-CALL placeholders.
 
-	// Pop context
+	// Fixup RECUR
+	for _, ip := range ctx.RecurFixups {
+		// ip is the location of the placeholder op (opRecurClosure).
+		// If we shifted code, ip needs to be shifted too?
+		// YES, because the fixups were recorded RELATIVE TO START OF SEGMENT.
+		// Since we inserted at StartIP, everything after it shifted.
+		// All fixups are inside the closure, so they are after StartIP.
+		realIP := ip + shift
+
+		targetIP := ctx.StartIP // New start (opEnterScope if locals, or first instr)
+
+		// Calculate offset: Target - (AddressOfArgument)
+		// opRecurClosure/opCallOffset implementations do:
+		// vm.ip++ (points to argument)
+		// target = vm.ip + offset
+		// So: offset = target - vm.ip
+		// At runtime, vm.ip will be realIP + 1.
+		offset := targetIP - (realIP + 1)
+
+		// Patch opcode and offset
+		vm.codeseg[realIP+1] = uint16(offset)
+
+		if hasLocals {
+			vm.codeseg[realIP] = opRecurClosure
+		} else {
+			vm.codeseg[realIP] = opCallOffset
+		}
+	}
+
+	// Fixup TAIL-CALL
+	for _, ip := range ctx.TailCallFixups {
+		realIP := ip + shift
+		targetIP := ctx.StartIP
+
+		if hasLocals {
+			// Optimization: Skip opEnterScope (index 0 and 1). Jump to index 2.
+			// This reuses the current scope frame.
+			targetIP += 2
+		}
+
+		// Tail call is always opBranch
+		vm.codeseg[realIP] = opBranch
+
+		// Calculate offset involves the -1 because branch is relative to instruction?
+		// See branchUnconditional: vm.ip += int(num) -> next instruction is ip+1+num.
+		// We want next instruction to be TargetIP.
+		// TargetIP = (realIP + 1) + 1 + num  (Wait, ip is pointing to opcode?)
+		// When executing branch: ip points to opcode.
+		// num = vm.codeseg[ip+1]
+		// vm.ip += num.
+		// Next loop: vm.ip++ (so effective next is ip + num + 1)
+		// We want effective next to be TargetIP.
+		// TargetIP = ip + num + 1
+		// num = TargetIP - ip - 1
+
+		offset := targetIP - realIP - 1
+		vm.codeseg[realIP+1] = uint16(offset)
+	}
+
+	vm.codeseg = append(vm.codeseg, opReturn)
 	vm.PopCompCtx()
 
 	// Post-processing
@@ -419,24 +496,18 @@ func quotationEnd(vm *VM) error {
 		vm.codeseg[jumpIdx] = uint16(offset) // Patch opBranch
 
 		// 2. Emit opPushClosure
-		// We use a relative offset so that code shifting (for locals optimization) doesn't break it.
-		// offset = Target - (CurrentIP + 1)
-		// CurrentIP is index of opPushClosure (len).
-		// Argument is at len+1.
+		// We use a relative offset offsets relative to current instruction.
+		// opPushClosure (here) + offset = StartIP.
+		// vm.ip points to offset argument.
+		// StartIP = (len + 1) + offset.
+		// offset = StartIP - (len + 1).
 		offset = ctx.StartIP - (len(vm.codeseg) + 1)
 		vm.codeseg = append(vm.codeseg, opPushClosure, uint16(offset))
 	} else {
 		// We were top-level.
 		// We just finished compiling the closure.
 		// We need to push the Closure object to the stack.
-		// Note: The code is in vm.codeseg.
-		// The HeadScope at runtime will be the current HeadScope?
-		// Yes.
-		closure := Closure{
-			StartIP: ctx.StartIP,
-			Env:     vm.HeadScope,
-		}
-		vm.Push(closure)
+		vm.Push(Closure{StartIP: ctx.StartIP, Env: vm.HeadScope})
 	}
 
 	return nil

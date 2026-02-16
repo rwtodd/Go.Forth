@@ -23,6 +23,8 @@ const (
 	opCompileComma
 	opBranch
 	opBZR
+	opCallOffset
+	opRecurClosure
 )
 
 // A Word in forth is an operation on the VM
@@ -35,9 +37,12 @@ type Word struct {
 
 // CompilationCtx holds the state for the word currently being defined
 type CompilationCtx struct {
-	StartIP       int            // Instruction pointer where this definition starts
-	WordIdx       int            // Index of the word being defined
-	CompileLocals map[string]int // Locals defined in the current word
+	StartIP        int            // Instruction pointer where this definition starts
+	WordIdx        int            // Index of the word being defined
+	CompileLocals  map[string]int // Locals defined in the current word
+	IsClosure      bool           // Whether this context is a closure
+	RecurFixups    []int          // IP locations that need recur fixup
+	TailCallFixups []int          // IP locations that need tail-call fixup
 }
 
 // Scope represents a runtime environment for variables
@@ -93,9 +98,12 @@ func (vm *VM) CurrentCompCtx() *CompilationCtx {
 // PushCompCtx pushes a new compilation context
 func (vm *VM) PushCompCtx(startIP, wordIdx int) {
 	vm.CompStack = append(vm.CompStack, CompilationCtx{
-		StartIP:       startIP,
-		WordIdx:       wordIdx,
-		CompileLocals: make(map[string]int),
+		StartIP:        startIP,
+		WordIdx:        wordIdx,
+		CompileLocals:  make(map[string]int),
+		IsClosure:      false,
+		RecurFixups:    make([]int, 0),
+		TailCallFixups: make([]int, 0),
 	})
 }
 
@@ -274,6 +282,20 @@ func debugPrint(vm *VM) error {
 			} else {
 				fmt.Printf("%03d: %d (bzr ???)\n", i, v)
 			}
+		case opCallOffset:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (callOffset %d)\n", i, v, int16(vm.codeseg[i+1]))
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (callOffset ???)\n", i, v)
+			}
+		case opRecurClosure:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (recurClosure %d)\n", i, v, int16(vm.codeseg[i+1]))
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (recurClosure ???)\n", i, v)
+			}
 		default:
 			// Regular word call - look up the name
 			if int(v) < len(vm.words) {
@@ -418,6 +440,36 @@ func pushClosure(vm *VM) error {
 	return nil
 }
 
+// callOffset implements the opCallOffset opcode
+// It calls a function at a relative offset from the current IP.
+func callOffset(vm *VM) error {
+	vm.ip++
+	offset := int16(vm.codeseg[vm.ip])
+	targetIP := vm.ip + int(offset)
+	return vm.RunAt(targetIP)
+}
+
+// recurClosure implements the opRecurClosure opcode
+// It calls a function at a relative offset, but temporarily restores the parent scope
+// to ensure captured variables are accessed correctly during the recursive call.
+func recurClosure(vm *VM) error {
+	vm.ip++
+	offset := int16(vm.codeseg[vm.ip])
+	targetIP := vm.ip + int(offset)
+
+	oldHead := vm.HeadScope
+	// We need to unwrap ONE level of scope (the local scope of the current closure)
+	// so that the new instance is called with the captured environment as HeadScope.
+	if oldHead != nil {
+		vm.HeadScope = oldHead.Parent
+	}
+
+	err := vm.RunAt(targetIP)
+
+	vm.HeadScope = oldHead
+	return err
+}
+
 // RunAt runs the code segment starting at the given IP
 func (vm *VM) RunAt(startIP int) error {
 	rstackLen := len(vm.Rstack)
@@ -468,6 +520,8 @@ func NewVM() *VM {
 	ans.Define(Word{Name: "compile,", Run: compileComma, Immediate: false})
 	ans.Define(Word{Name: "(branch)", Run: branchUnconditional, Immediate: false})
 	ans.Define(Word{Name: "(bzr)", Run: branchZero, Immediate: false})
+	ans.Define(Word{Name: "(call-offset)", Run: callOffset, Immediate: false})
+	ans.Define(Word{Name: "(recur-closure)", Run: recurClosure, Immediate: false})
 	// END SPECIALS
 
 	branchWordsInit(ans)

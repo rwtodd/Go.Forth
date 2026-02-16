@@ -3,6 +3,8 @@
 package forth
 
 import (
+	stdbytes "bytes"
+	"strings"
 	"testing"
 )
 
@@ -40,17 +42,99 @@ func TestQuotationsShadowing(t *testing.T) {
 }
 
 func TestRecursionInClosure(t *testing.T) {
-	// Basic recursion inside a closure?
-	// Since recur relies on name, anonymous recursion is tricky.
-	// If we support :NONAME or just recursive closure via valid stack manipulation?
-	// For now, let's test that we can call ourselves if we are assigned to a variable/constant?
-	// : fact-closure [: dup 1 <= IF drop 1 ELSE dup 1 - fact-closure execute * THEN ;] ;
-	// This requires forward reference or `defer`.
-	// We don't have defer standard.
-	// Let's skip recursion inside anonymous for now, consistent with plan.
+	tstRunForth(t, "Recur in a Closure",
+		`: quot+recur (| n | count -- count ) 0 count! " Starting n:" . n . cr [ (| n |) count 1 + count!  n 0 > IF n . cr n 1 - recur ELSE " done!" . cr THEN ] n swap execute " Bye!" type cr count ;
+	   4 quot+recur`, 5)
+	tstRunForth(t, "(tail-call) in a Closure",
+		`: quot+tc (| n | count -- count ) 0 count! " Starting n:" . n . cr [ (| n |) count 1 + count!  n 0 > IF n . cr n 1 - (tail-call) ELSE " done!" . cr THEN ] n swap execute " Bye!" type cr count ;
+	   4 quot+tc`, 5)
+}
+
+func TestRecursionNoLocals(t *testing.T) {
+	// Verify that returning from a recursive call doesn't break anything.
+	// We need to capture stdout to verify the output.
+	vm.ResetState()
+	mark(vm)
+	code := `[ dup 0= IF . " DONE!" type cr ELSE dup 1 - RECUR " WAS" . . cr THEN ]  4 swap execute`
+
+	var buf stdbytes.Buffer
+	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := "0 DONE!\nWAS 1 \nWAS 2 \nWAS 3 \nWAS 4 \n"
+	if buf.String() != expected {
+		t.Errorf("Output mismatch.\nExpected:\n%q\nGot:\n%q", expected, buf.String())
+	}
+	forget(vm)
+}
+
+func TestRecursionLocalsAccess(t *testing.T) {
+	// Verify that we can access locals after returning from a recursive call
+	// We need to capture stdout to verify the output.
+	vm.ResetState()
+	mark(vm)
+	code := `[ (| n |) n 0= IF n . " DONE!" type cr ELSE n 1 - RECUR " WAS" . n . cr THEN ] 4 swap execute`
+
+	var buf stdbytes.Buffer
+	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := "0 DONE!\nWAS 1 \nWAS 2 \nWAS 3 \nWAS 4 \n"
+	if buf.String() != expected {
+		t.Errorf("Output mismatch.\nExpected:\n%q\nGot:\n%q", expected, buf.String())
+	}
+	forget(vm)
 }
 
 func TestTopLevelQuotation(t *testing.T) {
 	// [ 10 20 + ] execute -> 30
 	tstRunForth(t, "TopLevel", "[ 10 20 + ] execute", 30)
+}
+
+func TestLocalsAfterRecur(t *testing.T) {
+	// Verify that recur works even if locals are defined AFTER the recur call
+	// in the source text.
+	vm.ResetState()
+	mark(vm)
+	// Factorial using recursion, but locals defined at the end.
+	// [ dup 0 > IF dup 1 - recur * ELSE drop 1 THEN (| | temp ) ]
+	code := `[ dup 0 > IF dup 1 - recur * ELSE drop 1 THEN (| | temp ) ] 5 swap execute`
+
+	var buf stdbytes.Buffer
+	// We expect 120 on stack, no output.
+	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(vm.Stack) != 1 {
+		t.Fatalf("Stack length mismatch. Expected 1, got %d", len(vm.Stack))
+	}
+	if val, ok := vm.Stack[0].(int); !ok || val != 120 {
+		t.Errorf("Value mismatch. Expected 120, got %v", vm.Stack[0])
+	}
+	forget(vm)
+}
+
+func TestTailCallLocalsAfter(t *testing.T) {
+	// Verify that tail-call works even if locals are defined AFTER the call
+	vm.ResetState()
+	mark(vm)
+	// [ dup 0 > IF 1 - (tail-call) ELSE THEN (| | n ) ]
+	// This captures the tail-call scenario with late locals.
+	code := `[ dup 0 > IF 1 - (tail-call) ELSE THEN (| | n ) ] 5 swap execute`
+
+	var buf stdbytes.Buffer
+	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(vm.Stack) != 1 {
+		t.Fatalf("Stack length mismatch. Expected 1, got %d", len(vm.Stack))
+	}
+	if val, ok := vm.Stack[0].(int); !ok || val != 0 {
+		t.Errorf("Value mismatch. Expected 0, got %v", vm.Stack[0])
+	}
+	forget(vm)
 }

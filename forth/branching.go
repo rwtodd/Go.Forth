@@ -115,12 +115,19 @@ func recur(vm *VM) (err error) {
 	if ctx == nil {
 		return ErrBadStateMsg("recur used outside of definition")
 	}
-	vm.codeseg = append(vm.codeseg, uint16(ctx.WordIdx))
+
+	if ctx.IsClosure {
+		// Defer the decision until end of quotation.
+		// Emit placeholder op and offset.
+		// We use opRecurClosure as placeholder, but it might change to opCallOffset.
+		ctx.RecurFixups = append(ctx.RecurFixups, len(vm.codeseg))
+		vm.codeseg = append(vm.codeseg, opRecurClosure, 0)
+	} else {
+		vm.codeseg = append(vm.codeseg, uint16(ctx.WordIdx))
+	}
 	return
 }
 
-// TAILCALL jumps to the start of the current function, but
-// bypassing the local variable creation.
 // TAILCALL jumps to the start of the current function, but
 // bypassing the local variable creation.
 func tailCall(vm *VM) (err error) {
@@ -128,17 +135,33 @@ func tailCall(vm *VM) (err error) {
 	if ctx == nil {
 		return ErrBadStateMsg("tail-call used outside of definition")
 	}
-	// Jump to vm.curdef - 1
-	// Current IP = len(vm.codeseg)
-	// Target IP = len(vm.codeseg) + offset
-	// Target IP = ctx.StartIP - 1 (why -1? Because standard loop increments IP?)
-	// Actually tailCall jumps to right before logic?
-	// Wait, original logic:
-	// Target IP = vm.curdef - 1
-	// Let's keep it same: ctx.StartIP - 1
 
-	offset := ctx.StartIP - 1 - len(vm.codeseg)
-	vm.codeseg = append(vm.codeseg, opBranch, uint16(offset))
+	if ctx.IsClosure {
+		// Defer decision.
+		// We emit a placeholder BRANCH.
+		// We DO NOT emit opExitScope yet, because if we optimize for locals, we won't need it.
+		// If we do need it (no locals optimization?), we will have to handle that?
+		// Wait, if no locals, we just branch to start. No exit scope needed (scope stays same).
+
+		// If there ARE locals, but we use TCO (recurse), we jump to AFTER enterScope.
+		// So we reuse the scope. No exit scope needed.
+
+		// So.. in ALL closure cases, we don't need explicit opExitScope for tail call!
+		// Case 1: No locals. Scope is HeadScope. Jump to start. Scope remains HeadScope. Correct.
+		// Case 2: Locals. TCO. Scope is LocalScope. Jump to Body. Scope remains LocalScope. Variables overwritten. Correct.
+
+		// Is there any case where we needed opExitScope?
+		// Only if we wanted to destroy the current scope and create a NEW one.
+		// But TCO implies reusing the frame if possible.
+		// Since Forth locals are just an array in a scope, reusing is fine.
+
+		ctx.TailCallFixups = append(ctx.TailCallFixups, len(vm.codeseg))
+		vm.codeseg = append(vm.codeseg, opBranch, 0)
+	} else {
+		// Standard word tail call
+		offset := ctx.StartIP - 1 - len(vm.codeseg)
+		vm.codeseg = append(vm.codeseg, opBranch, uint16(offset))
+	}
 	return
 }
 
