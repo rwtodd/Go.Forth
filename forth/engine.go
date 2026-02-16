@@ -345,6 +345,10 @@ func (vm *VM) Push(v any) {
 
 // debugPrint prints the codeseg with smart opcode decoding
 func debugPrint(vm *VM) error {
+	opTestDo, ok := vm.dict["(testDo)"]
+	if !ok {
+		return ErrBadStateMsg("testDo not found")
+	}
 	for i := 0; i < len(vm.codeseg); i++ {
 		v := vm.codeseg[i]
 		switch v {
@@ -429,6 +433,13 @@ func debugPrint(vm *VM) error {
 			} else {
 				fmt.Printf("%03d: %d (callOffset ???)\n", i, v)
 			}
+		case opTestDo:
+			if i+1 < len(vm.codeseg) {
+				fmt.Printf("%03d: %d (testDo %d)\n", i, v, int16(vm.codeseg[i+1]))
+				i++ // skip the data
+			} else {
+				fmt.Printf("%03d: %d (testDo ???)\n", i, v)
+			}
 		case opRecurClosure:
 			if i+1 < len(vm.codeseg) {
 				fmt.Printf("%03d: %d (recurClosure %d)\n", i, v, int16(vm.codeseg[i+1]))
@@ -439,9 +450,11 @@ func debugPrint(vm *VM) error {
 		case opLit:
 			if i+1 < len(vm.codeseg) {
 				idx := vm.codeseg[i+1]
-				val := "???"
+				var val string
 				if int(idx) < len(vm.literals) {
 					val = fmt.Sprintf("%v", vm.literals[idx])
+				} else {
+					val = fmt.Sprintf("INVALID INDEX %d", idx)
 				}
 				fmt.Printf("%03d: %d (lit #%d = %s)\n", i, v, idx, val)
 				i++ // skip the data
@@ -720,6 +733,7 @@ func NewVM() *VM {
 	arrayWordsInit(ans)
 	dictWordsInit(ans)
 	comparisonWordsInit(ans)
+	varLenWordsInit(ans)
 
 	// these come from this file...
 	ans.Define(&NativeWord{name: "mark", run: mark, immediate: false})

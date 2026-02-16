@@ -32,7 +32,7 @@ always be provided from the Go side of the wall.
 This is just preliminary work.  Words implemented, organized by category:
 
 ### Stack Manipulation
-dup drop swap over rot -rot nip tuck >r r> r@ rdrop
+dup drop swap over rot -rot nip tuck >r r> r@ rdrop depth
 
 ### Arithmetic & Math
 + - * / sqrt log log10 log2 max min sin cos tan round floor ceil
@@ -44,7 +44,7 @@ dup drop swap over rot -rot nip tuck >r r> r@ rdrop
 if else then recur do loop +loop i j leave exit begin again until while repeat
 
 ### Input/Output
-read skip " chr ord .s . type cr
+read skip " chr ord .s . type cr << >>sprintf
 
 ### Compilation & Definition
 : ; literal postpone immediate compile, ' ['] execute

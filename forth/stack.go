@@ -128,6 +128,12 @@ func rdrop(vm *VM) error {
 	return err
 }
 
+// depth pushes the current stack depth
+func depth(vm *VM) error {
+	vm.Push(len(vm.Stack))
+	return nil
+}
+
 // stackWordsInit adds stack-related core words to the VM
 func stackWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "dup", run: dup, immediate: false})
@@ -142,4 +148,5 @@ func stackWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "r>", run: fromR, immediate: false})
 	vm.Define(&NativeWord{name: "r@", run: peekR, immediate: false})
 	vm.Define(&NativeWord{name: "rdrop", run: rdrop, immediate: false})
+	vm.Define(&NativeWord{name: "depth", run: depth, immediate: false})
 }

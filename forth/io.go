@@ -125,9 +125,61 @@ func skip(vm *VM) error {
 	return err
 }
 
+// escapedRead reads from the `source` until the delimiter (a rune) is found,
+// processing escape sequences along the way.
+func escapedRead(source *bufio.Reader, delim rune, buf []rune) ([]rune, error) {
+	var (
+		ch  rune
+		err error
+	)
+
+	for err == nil {
+		ch, _, err = source.ReadRune()
+		if err != nil {
+			break
+		}
+		if ch == delim {
+			break
+		}
+		if ch == '\\' {
+			// Escape sequence
+			ch, _, err = source.ReadRune()
+			if err != nil {
+				break
+			}
+			switch ch {
+			case 'n':
+				ch = '\n'
+			case 't':
+				ch = '\t'
+			case 'r':
+				ch = '\r'
+			case '\\':
+				ch = '\\'
+			case '"':
+				ch = '"'
+			default:
+				// Unknown escape, keep literal backslash and char?
+				// Or strict error? C usually keeps literal char.
+				// user said "interpret common escape codes like \n \t \\ and \"".
+				// Let's keep the backslash if it's not a known escape?
+				// But simpler to just append 'ch' if it's not special?
+				// Actually, if it's unknown, usually it's just the char.
+				// e.g. \a -> a.
+			}
+		}
+		buf = append(buf, ch)
+	}
+
+	if err == io.EOF {
+		err = nil
+	}
+	return buf, err
+}
+
 // : " 34 read (compiling?) if postpone literal then ; immediate
 func openQuote(vm *VM) error {
-	buf, err := delimitedRead(vm.Source, '"', nil)
+	buf, err := escapedRead(vm.Source, '"', nil)
 	if err != nil {
 		return err
 	}

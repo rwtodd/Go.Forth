@@ -153,7 +153,13 @@ func interpret(vm *VM) (err error) {
 func makeImmediate(vm *VM) error {
 	ctx := vm.CurrentCompCtx()
 	if ctx == nil {
-		return ErrBadStateMsg("immediate called without compiling a word!")
+		// If called immediately after a definition (standard Forth usage),
+		// mark the last defined word in the dictionary as immediate.
+		if len(vm.words) == 0 {
+			return ErrBadStateMsg("immediate called with no words defined!")
+		}
+		vm.words[len(vm.words)-1].SetImmediate(true)
+		return nil
 	}
 	vm.words[ctx.WordIdx].SetImmediate(true)
 	return nil
@@ -221,8 +227,9 @@ func stopCompile(vm *VM) error {
 	// Or we have the name in the context? No, context doesn't have name.
 	// The existing word has the name.
 	name := vm.words[ctx.WordIdx].Name()
+	isImmediate := vm.words[ctx.WordIdx].IsImmediate()
 
-	cw := &CompositeWord{name: name, start: ctx.StartIP}
+	cw := &CompositeWord{name: name, start: ctx.StartIP, immediate: isImmediate}
 	vm.words[ctx.WordIdx] = cw
 	vm.AddToDict(uint16(ctx.WordIdx))
 
@@ -746,7 +753,7 @@ func parseWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: ";", run: stopCompile, immediate: true})
 	vm.Define(&NativeWord{name: "literal", run: literal, immediate: true})
 	vm.Define(&NativeWord{name: "postpone", run: postpone, immediate: true})
-	vm.Define(&NativeWord{name: "immediate", run: makeImmediate, immediate: false})
+	vm.Define(&NativeWord{name: "immediate", run: makeImmediate, immediate: true})
 	vm.Define(&NativeWord{name: "'", run: tick, immediate: false})
 	vm.Define(&NativeWord{name: "[']", run: bracketTick, immediate: true})
 	vm.Define(&NativeWord{name: "(|", run: compileLocals, immediate: true})

@@ -54,6 +54,24 @@ Words are grouped by category.
   Removes the top item from the return stack.  
   Example: `rdrop` → return stack empty
 
+- **depth**: depth ( -- n )  
+  Pushes the number of items currently on the stack.  
+  Example: `1 2 3 depth .` → 3
+
+## Variable Length Arguments
+
+- **<<**: startVarLen ( -- )  
+  Marks the start of a variable-length argument list by pushing the current stack depth to the return stack.  
+  Example: `<< 1 2 3 ...`
+
+- **(sprintf)**: sprintf ( fmt args... count -- result )  
+  Formats a string using the provided format string and arguments. The count of arguments must be on top of the stack.  
+  Example: `"val: %d" 42 1 (sprintf) .` → val: 42
+
+- **>>sprintf**: endVarLenSprintf ( fmt args... -- result )  
+  Collects arguments pushed since `<<` and formats them using the format string provided before `<<`.  
+  Example: `"val: %d" << 42 >>sprintf .` → val: 42
+
 ## Numeric Operations
 
 - **+**: : + ( a b -- a+b ) <code>  
@@ -192,9 +210,9 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Skips input until the delimiter.  
   Example: `32 skip` (skips until space)
 
-- **"**: : " 34 read (compiling?) if postpone literal then ; immediate  
-  Parses a string literal.  
-  Example: `"hello" type` → hello
+- **"**: : " 34 escapedRead (compiling?) if postpone literal then ; immediate  
+  Parses a string literal. Supports C-style escape sequences: `\n`, `\t`, `\r`, `\\`, `\"`.  
+  Example: `"hello\nworld" type`
 
 - **chr**: chrFromInt ('chr') takes an integer and makes a one-char string of it, interpreted as a rune  
   Converts int to character.  
