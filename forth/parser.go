@@ -101,15 +101,15 @@ func interpret(vm *VM) (err error) {
 
 		// lookup the string in the dictionary
 		if idx, ok := vm.dict[str]; ok {
-			if vm.words[idx].Name == "]" {
+			if vm.words[idx].Name == "]]" {
 				// Return to compilation if we are compiling
 				if vm.CurrentCompCtx() != nil {
 					return nil
 				}
-				// If not compiling, ] is an error or no-op?
+				// If not compiling, ]] is an error or no-op?
 				// In standard forth ] enters compilation.
-				// But our ] says "stopInterpret".
-				// Let's assume for now it just breaks the loop if we were inside [ ... ]
+				// But our ]] says "stopInterpret".
+				// Let's assume for now it just breaks the loop if we were inside [[ ... ]]
 				// If we are top level, it might be an error.
 				// For now, let's return and let caller decide.
 				return nil
@@ -586,8 +586,8 @@ func bracketTick(vm *VM) error {
 func parseWordsInit(vm *VM) {
 	vm.Define(Word{Name: "\\", Run: nlComment, Immediate: true})
 	vm.Define(Word{Name: "(", Run: parenComment, Immediate: true})
-	vm.Define(Word{Name: "[", Run: interpret, Immediate: true})
-	vm.Define(Word{Name: "]", Run: stopInterpret, Immediate: false})
+	vm.Define(Word{Name: "[[", Run: interpret, Immediate: true})
+	vm.Define(Word{Name: "]]", Run: stopInterpret, Immediate: false})
 	vm.Define(Word{Name: ":", Run: compile, Immediate: false})
 	vm.Define(Word{Name: ";", Run: stopCompile, Immediate: true})
 	vm.Define(Word{Name: "literal", Run: literal, Immediate: true})
@@ -596,6 +596,6 @@ func parseWordsInit(vm *VM) {
 	vm.Define(Word{Name: "'", Run: tick, Immediate: false})
 	vm.Define(Word{Name: "[']", Run: bracketTick, Immediate: true})
 	vm.Define(Word{Name: "(|", Run: compileLocals, Immediate: true})
-	vm.Define(Word{Name: "[:", Run: quotationStart, Immediate: true})
-	vm.Define(Word{Name: ";]", Run: quotationEnd, Immediate: true})
+	vm.Define(Word{Name: "[", Run: quotationStart, Immediate: true})
+	vm.Define(Word{Name: "]", Run: quotationEnd, Immediate: true})
 }

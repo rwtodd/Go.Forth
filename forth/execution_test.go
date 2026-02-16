@@ -19,9 +19,9 @@ func TestBracketTick(t *testing.T) {
 func TestCompileComma(t *testing.T) {
 	// Manually compiles a call to a word
 	// : target 123 ;
-	// : builder [ ' target compile, ] ;
+	// : builder [[ ' target compile, ]] ;
 	// builder -> should run target and push 123
-	tstRunForth(t, "CompileComma", `: target 123 ; : builder [ ' target compile, ] ; builder`, 123)
+	tstRunForth(t, "CompileComma", `: target 123 ; : builder [[ ' target compile, ]] ; builder`, 123)
 }
 
 func TestRecurWithLiterals(t *testing.T) {

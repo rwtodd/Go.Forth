@@ -230,13 +230,13 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Block comment.  
   Example: `( This is a comment )`
 
-- **[**: Interpret sets the compilation state of the VM to false, and reads words one at a time...  
+- **[[**: Interpret sets the compilation state of the VM to false, and reads words one at a time...  
   Switches to interpretation mode.  
-  Example: `[ 1 2 + ]` (interprets the code)
+  Example: `[[ 1 2 + ]]` (interprets the code)
 
-- **]**: stopInterpret completes an interpretation and falls back to the compiler  
+- **]]**: stopInterpret completes an interpretation and falls back to the compiler  
   Switches back to compilation mode.  
-  Example: `]` (after [ )
+  Example: `]]` (after [[ )
 
 - **:**: compile (':') reads the name of a word to define, and then compiles the definition until ';' tells it to stop  
   Starts word definition.  
@@ -435,6 +435,27 @@ Local variables can be defined within a word using the `(| ... )` syntax. They a
   ```forth
   : test (| a b | c -- result ) a b + c * ;
   ```
+
+## Quotations/Closures
+
+Quotations (also called closures) allow capturing code blocks for later execution. They are created using the `[ ... ]` syntax and return a closure object that can be executed with `execute`.
+
+- **[** ... **]**: quotationStart  
+  Creates a quotation (closure) containing the compiled code between the brackets.  
+  Example: `[ 1 2 + ] execute` → pushes 3 to the stack
+
+- **execute**: execute ( closure -- )  
+  Executes a quotation/closure.  
+  Example: `[ 42 ] execute .` → prints 42
+
+Quotations capture the current environment and can access local variables from their defining scope. They are particularly useful for creating anonymous functions, implementing control structures, and functional programming patterns.
+
+Example with locals:
+```forth
+: make-adder (| n |) [ n + ] ;
+5 make-adder constant add5
+10 add5 execute . \ prints 15
+```
 
 ## Dictionary Words
 

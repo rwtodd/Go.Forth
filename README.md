@@ -29,18 +29,46 @@ always be provided from the Go side of the wall.
 
 ## What is the status?
 
-This is just preliminary work.  Words implemented:
+This is just preliminary work.  Words implemented, organized by category:
 
-~~~~~~
-\ ( read skip " chr ord .s . type cr
-[ ] : ; literal postpone immediate 
-dup drop swap over rot -rot + * - / sqrt log log10 log2
-max min sin cos tan mark forget if else then recur
-variable @ ! c@ c!
-bytes ints floats strings @len @push @pop @shift @unshift
-empty-dict d@ d@? d@| d! dkeys ddel
- >r r> r@ rdrop do loop +loop i j
-~~~~~~
+### Stack Manipulation
+dup drop swap over rot -rot nip tuck >r r> r@ rdrop
+
+### Arithmetic & Math
++ - * / sqrt log log10 log2 max min sin cos tan round floor ceil
+
+### Comparison & Logic
+= < > <= >= <> 0= 0< 0> and or xor invert true false
+
+### Control Flow
+if else then recur do loop +loop i j leave exit begin again until while repeat
+
+### Input/Output
+read skip " chr ord .s . type cr
+
+### Compilation & Definition
+: ; literal postpone immediate compile, ' ['] execute
+
+### Interpretation Control
+[[ ]] [ ]
+
+### Comments
+\ (
+
+### Arrays
+bytes ints floats strings @ ! c@ c! @len @push @pop @shift @unshift
+
+### Variables
+variable @ !
+
+### Local Variables
+(| |)
+
+### Dictionaries
+empty-dict d@ d! ddel dkeys d@| d@? mark forget
+
+### Internal/System
+debug.
 
 At this point, you can define custom words, which can include
 immediate ("macro"-type words) which use `postpone`. 
