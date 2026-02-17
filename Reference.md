@@ -6,7 +6,7 @@ Words are grouped by category.
 
 ## Stack Manipulation Words
 
-- **dup**: : dup ( a -- a a ) <code>  
+- **dup**: : dup ( a -- a a )   
   Duplicates the top item on the stack.  
   Example: `5 dup .s` → stack: 5 5
 
@@ -14,15 +14,15 @@ Words are grouped by category.
   Copies the second item to the top.  
   Example: `1 2 over .s` → stack: 1 2 1
 
-- **drop**: : drop ( a -- ) <code>  
+- **drop**: : drop ( a -- )   
   Removes the top item from the stack.  
   Example: `1 2 drop .s` → stack: 1
 
-- **swap**: : swap ( a b -- b a ) <code>  
+- **swap**: : swap ( a b -- b a )   
   Swaps the top two items.  
   Example: `1 2 swap .s` → stack: 2 1
 
-- **rot**: : rot ( a b c -- b c a ) <code>  
+- **rot**: : rot ( a b c -- b c a )   
   Rotates the top three items.  
   Example: `1 2 3 rot .s` → stack: 2 3 1
 
@@ -98,72 +98,72 @@ Words are grouped by category.
 
 ## Numeric Operations
 
-- **+**: : + ( a b -- a+b ) <code>  
+- **+**: : + ( a b -- a+b )   
   Adds two numbers (int, float64, or strings).  
   Example: `3 4 + .` → 7
 
-- **-**: : - ( a b -- a-b ) <code>  
+- **-**: : - ( a b -- a-b )   
   Subtracts two numbers.  
   Example: `10 3 - .` → 7
 
-- **\*** : : * ( a b -- a*b ) <code>  
+- **\*** : : * ( a b -- a*b )   
   Multiplies two numbers or repeats a string.  
   Example: `3 4 * .` → 12  
   Example: `"hello" 3 * .` → hellohellohello
 
-- **\*\*** : : \*\* ( a b -- a\*\*b ) <code>  
+- **\*\*** : : \*\* ( a b -- a\*\*b )   
   raises a to the power of b
   Example: `2 3 \*\* .` →  8.0
 
-- **/**: : / ( a b -- a/b ) <code>  
+- **/**: : / ( a b -- a/b )   
   Divides two numbers.  
   Example: `10 2 / .` → 5
 
-- **sqrt**: : sqrt ( a -- sqrt(a) ) <code>  
+- **sqrt**: : sqrt ( a -- sqrt(a) )   
   Computes the square root.  
   Example: `16 sqrt .` → 4
 
-- **log**: : log ( a -- log(a) ) <code>  
+- **log**: : log ( a -- log(a) )   
   Computes the natural logarithm.  
   Example: `2.718 log .` → 1
 
-- **log10**: : log10 ( a -- log10(a) ) <code>  
+- **log10**: : log10 ( a -- log10(a) )   
   Computes the base-10 logarithm.  
   Example: `100 log10 .` → 2
 
-- **log2**: : log2 ( a -- log2(a) ) <code>  
+- **log2**: : log2 ( a -- log2(a) )   
   Computes the base-2 logarithm.  
   Example: `8 log2 .` → 3
 
-- **max**: : max ( a b -- max(a,b) ) <code>  
+- **max**: : max ( a b -- max(a,b) )   
   Returns the maximum of two numbers.  
   Example: `5 3 max .` → 5
 
-- **min**: : min ( a b -- min(a,b) ) <code>  
+- **min**: : min ( a b -- min(a,b) )   
   Returns the minimum of two numbers.  
   Example: `5 3 min .` → 3
 
-- **sin**: : sin ( a -- sin(a) ) <code>  
+- **sin**: : sin ( a -- sin(a) )   
   Computes the sine (input in radians).  
   Example: `0 sin .` → 0
 
-- **cos**: : cos ( a -- cos(a) ) <code>  
+- **cos**: : cos ( a -- cos(a) )   
   Computes the cosine (input in radians).  
   Example: `0 cos .` → 1
 
-- **tan**: : tan ( a -- tan(a) ) <code>  
+- **tan**: : tan ( a -- tan(a) )   
   Computes the tangent (input in radians).  
   Example: `0 tan .` → 0
 
-- **round**: : round ( a -- round(a) ) <code>  
+- **round**: : round ( a -- round(a) )   
   Rounds to the nearest integer.  
   Example: `3.6 round .` → 4
 
-- **floor**: : floor ( a -- floor(a) ) <code>  
+- **floor**: : floor ( a -- floor(a) )   
   Rounds down to the nearest integer.  
   Example: `3.6 floor .` → 3
 
-- **ceil**: : ceil ( a -- ceil(a) ) <code>  
+- **ceil**: : ceil ( a -- ceil(a) )   
   Rounds up to the nearest integer.  
   Example: `3.2 ceil .` → 4
 
@@ -171,62 +171,62 @@ Words are grouped by category.
 
 System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and strings.
 
-- **=**: : = ( a b -- bool ) <code>  
+- **=**: : = ( a b -- bool )   
   Checks for equality.  
   Example: `1 1 = .` → -1
 
-- **<**: : < ( a b -- bool ) <code>  
+- **<**: : < ( a b -- bool )   
   Checks less than.  
   Example: `1 2 < .` → -1
 
-- **>**: : > ( a b -- bool ) <code>  
+- **>**: : > ( a b -- bool )   
   Checks greater than.  
   Example: `2 1 > .` → -1
 
-- **<=**: : <= ( a b -- bool ) <code>  
+- **<=**: : <= ( a b -- bool )   
   Checks less than or equal.  
   Example: `2 2 <= .` → -1
 
-- **>=**: : >= ( a b -- bool ) <code>  
+- **>=**: : >= ( a b -- bool )   
   Checks greater than or equal.  
   Example: `2 1 >= .` → -1
 
-- **<>**: : <> ( a b -- bool ) <code>  
+- **<>**: : <> ( a b -- bool )   
   Checks inequality.  
   Example: `1 2 <> .` → -1
 
-- **0=**: : 0= ( a -- bool ) <code>  
+- **0=**: : 0= ( a -- bool )   
   Checks if equal to zero (logical NOT).  
   Example: `0 0= .` → -1
 
-- **0<**: : 0< ( a -- bool ) <code>  
+- **0<**: : 0< ( a -- bool )   
   Checks if less than zero.  
   Example: `-1 0< .` → -1
 
-- **0>**: : 0> ( a -- bool ) <code>  
+- **0>**: : 0> ( a -- bool )   
   Checks if greater than zero.  
   Example: `1 0> .` → -1
 
-- **and**: : and ( a b -- c ) <code>  
+- **and**: : and ( a b -- c )   
   Bitwise AND.  
   Example: `-1 1 and .` → 1
 
-- **or**: : or ( a b -- c ) <code>  
+- **or**: : or ( a b -- c )   
   Bitwise OR.  
   Example: `1 2 or .` → 3
 
-- **xor**: : xor ( a b -- c ) <code>  
+- **xor**: : xor ( a b -- c )   
   Bitwise XOR.  
   Example: `1 3 xor .` → 2
 
-- **invert**: : invert ( a -- b ) <code>  
+- **invert**: : invert ( a -- b )   
   Bitwise NOT.  
   Example: `0 invert .` → -1
 
-- **true**: : true ( -- -1 ) <code>  
+- **true**: : true ( -- -1 )   
   Pushes constant -1 (TRUE).  
 
-- **false**: : false ( -- 0 ) <code>  
+- **false**: : false ( -- 0 )   
   Pushes constant 0 (FALSE).
 
 ## Input/Output Words
@@ -338,7 +338,7 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Recurses to start of current word.  
   Example: `: countdown dup . 1 - dup 0 > if recur then drop ;`
 
-- **do**: limit start DO <body> LOOP/+LOOP defines a basic for-style loop. It needs to stash away the limit and current index on the R-stack prior to the loop proper. Then, at the start of the loop, it needs to test whether iteration should continue, or jump to the end of the loop: >r >r (test loop-body back-facing branch) rdrop rdrop  
+- **do**: limit start DO body LOOP/+LOOP defines a basic for-style loop. It needs to stash away the limit and current index on the R-stack prior to the loop proper. Then, at the start of the loop, it needs to test whether iteration should continue, or jump to the end of the loop: >r >r (test loop-body back-facing branch) rdrop rdrop  
   Starts a definite loop.  
   Example: `10 0 do i . loop`
 
