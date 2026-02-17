@@ -590,8 +590,7 @@ func litUINT(vm *VM) error {
 }
 
 // compileLiteral is a helper function to put a literal into the compiled
-// codestream. This will be the one place we'll have to add code to have more
-// special types that don't just go to CreatePusher()
+// codestream.
 func compileLiteral(vm *VM, value interface{}) {
 	switch num := value.(type) {
 	case int:

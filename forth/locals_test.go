@@ -35,7 +35,7 @@ func TestLocalsShadowing(t *testing.T) {
 	// : test (| X |) X ;
 	// 5 test -> 5.
 	// X @ -> 0.
-	tstRunForth(t, "Shadowing", "variable X : test (| X |) X ; 5 test X @", 5, 0)
+	tstRunForth(t, "Shadowing", "0 variable X : test (| X |) X ; 5 test X @", 5, 0)
 }
 
 func TestLocalsRecursion(t *testing.T) {

@@ -173,6 +173,44 @@ type Variable struct {
 	value any
 }
 
+// VariableWord is a Word that holds a Variable and an optional ExecutionToken
+type VariableWord struct {
+	name string
+	val  *Variable
+	xt   ExecutionToken
+	// standard Word impl details
+	immediate bool
+	prevIdx   uint16
+}
+
+func (w *VariableWord) Name() string {
+	return w.name
+}
+
+func (w *VariableWord) IsImmediate() bool {
+	return w.immediate
+}
+
+func (w *VariableWord) SetImmediate(b bool) {
+	w.immediate = b
+}
+
+func (w *VariableWord) Previous() uint16 {
+	return w.prevIdx
+}
+
+func (w *VariableWord) SetPrevious(idx uint16) {
+	w.prevIdx = idx
+}
+
+func (w *VariableWord) Run(vm *VM) error {
+	vm.Push(w.val)
+	if w.xt != nil {
+		return w.xt.Run(vm)
+	}
+	return nil
+}
+
 // VM is the forth virtual machine state, which all
 // operations take
 type VM struct {
@@ -320,21 +358,86 @@ func constant(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	idx := vm.CreatePusher(val)
-	vm.dict[str] = idx
+
+	// Look up @
+	atIdx, ok := vm.dict["@"]
+	if !ok {
+		return ErrBadStateMsg("@ word not found")
+	}
+
+	// Create VariableWord with @ as XT
+	varObj := &Variable{value: val}
+	word := &VariableWord{
+		name: str,
+		val:  varObj,
+		xt:   WordToken{Token: atIdx},
+	}
+
+	vm.Define(word)
+	return nil
+}
+
+// variableDoes creates a new FORTH word that behaves like a variable with custom behavior
+// ( val xt "name" -- )
+func variableDoes(vm *VM) error {
+	buf := make([]rune, 0, 20)
+	str, err := nextToken(vm, buf)
+	if err != nil {
+		return err
+	}
+
+	xtVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	var xt ExecutionToken
+	if tok, ok := xtVal.(ExecutionToken); ok {
+		xt = tok
+	} else if idx, ok := xtVal.(int); ok {
+		xt = WordToken{Token: uint16(idx)}
+	} else {
+		return ErrArgumentMsg("variable-does expects execution token or word index")
+	}
+
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	varObj := &Variable{value: val}
+	word := &VariableWord{
+		name: str,
+		val:  varObj,
+		xt:   xt,
+	}
+
+	vm.Define(word)
 	return nil
 }
 
 // variable creates a new FORTH variable
+// ( val "name" -- )
 func variable(vm *VM) error {
 	buf := make([]rune, 0, 20)
 	str, err := nextToken(vm, buf)
 	if err != nil {
 		return err
 	}
-	varObj := &Variable{value: 0}
-	idx := vm.CreatePusher(varObj)
-	vm.dict[str] = idx
+
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	varObj := &Variable{value: val}
+	// Optimization: nil XT avoids overhead
+	word := &VariableWord{
+		name: str,
+		val:  varObj,
+		xt:   nil,
+	}
+	vm.Define(word)
 	return nil
 }
 
@@ -740,6 +843,7 @@ func NewVM() *VM {
 	ans.Define(&NativeWord{name: "forget", run: forget, immediate: false})
 	ans.Define(&NativeWord{name: "debug.", run: debugPrint, immediate: false})
 	ans.Define(&NativeWord{name: "variable", run: variable, immediate: false})
+	ans.Define(&NativeWord{name: "variable-does", run: variableDoes, immediate: false})
 	ans.Define(&NativeWord{name: "constant", run: constant, immediate: false})
 	ans.Define(&NativeWord{name: "execute", run: execute, immediate: false})
 
