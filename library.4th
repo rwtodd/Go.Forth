@@ -26,3 +26,8 @@
 : make-counter ( n "name" -- ) [ dup @ 1 + dup rot ! ] variable-does ;
 
 : countdown ( n "name" -- ) [ dup @ dup 0= IF nip ELSE dup 1 - rot ! THEN ] variable-does ;
+
+\ paragraph comments.. ignore until you see a blank line...
+10 constant NL \ new line
+: \p ( -- ) [[ NL ]] literal read   begin [[ NL ]] literal read " " = if exit then again ;
+
