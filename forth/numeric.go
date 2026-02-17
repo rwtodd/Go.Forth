@@ -46,6 +46,38 @@ func add(vm *VM) (err error) {
 	return
 }
 
+// : ** ( a b -- a**b ) <code>
+func raiseToPower(vm *VM) (err error) {
+	top := len(vm.Stack) - 1
+	if top < 1 {
+		return ErrUnderflow
+	}
+	switch op1 := vm.Stack[top].(type) {
+	case int:
+		switch op2 := vm.Stack[top-1].(type) {
+		case int:
+			vm.Stack[top-1] = math.Pow(float64(op2), float64(op1))
+		case float64:
+			vm.Stack[top-1] = math.Pow(op2, float64(op1))
+		default:
+			err = ErrArgumentMsg("** requires numeric arguments")
+		}
+	case float64:
+		switch op2 := vm.Stack[top-1].(type) {
+		case int:
+			vm.Stack[top-1] = math.Pow(float64(op2), op1)
+		case float64:
+			vm.Stack[top-1] = math.Pow(op2, op1)
+		default:
+			err = ErrArgumentMsg("** requires numeric arguments")
+		}
+	default:
+		err = ErrArgumentMsg("** requires numeric arguments")
+	}
+	vm.Stack = vm.Stack[:top]
+	return
+}
+
 // : * ( a b -- a*b ) <code>
 func multiply(vm *VM) (err error) {
 	top := len(vm.Stack) - 1
@@ -436,6 +468,7 @@ func numWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "+", run: add, immediate: false})
 	vm.Define(&NativeWord{name: "-", run: subtract, immediate: false})
 	vm.Define(&NativeWord{name: "*", run: multiply, immediate: false})
+	vm.Define(&NativeWord{name: "**", run: raiseToPower, immediate: false})
 	vm.Define(&NativeWord{name: "/", run: divide, immediate: false})
 	vm.Define(&NativeWord{name: "sqrt", run: sqrt, immediate: false})
 	vm.Define(&NativeWord{name: "log", run: log, immediate: false})

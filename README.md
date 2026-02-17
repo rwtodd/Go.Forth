@@ -1,9 +1,9 @@
 # Forth
 An embeddable postfix mini-language for my Go programs.
 
-## Is it a true ANS FORTH?
+## Does it follow ANS FORTH?
 
-No, because I did not want to simulate a raw memory space, which would
+No, and gets farther from it every day.  Primarily because I did not want to simulate a raw memory space, which would
 complicate interactions between the language and Go.  So, instead, I
 make the stack and all variables of garbage-collected type
 `any`, and provide overloads so you can say stuff like:
@@ -35,7 +35,7 @@ This is just preliminary work.  Words implemented, organized by category:
 dup drop swap over rot -rot nip tuck >r r> r@ rdrop depth
 
 ### Arithmetic & Math
-+ - * / sqrt log log10 log2 max min sin cos tan round floor ceil
++ - * / sqrt ** log log10 log2 max min sin cos tan round floor ceil
 
 ### Comparison & Logic
 = < > <= >= <> 0= 0< 0> and or xor invert true false
@@ -66,10 +66,10 @@ variable variable-does constant @ !
 (| |)
 
 ### Dictionaries
-empty-dict d@ d! ddel dkeys d@| d@? mark forget
+empty-dict d@ d! ddel dkeys d@| d@? 
 
 ### Internal/System
-debug.
+debug. mark forget
 
 At this point, you can define custom words, which can include
 immediate ("macro"-type words) which use `postpone`. 
@@ -93,7 +93,7 @@ As of Sept 2018, we have IF/ELSE/THEN, RECUR, and DO loops.
 20 21 22 23
 30 31 32 33
 
-: regreet ( num -- ) " HELLO! " . -1 + dup IF recur ELSE drop THEN ;
+: regreet ( num -- ) " HELLO! " . 1 - dup IF recur ELSE drop THEN ;
 5 regreet
 HELLO!  HELLO!  HELLO!  HELLO!  HELLO! 
 ~~~~~~

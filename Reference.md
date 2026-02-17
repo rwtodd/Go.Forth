@@ -111,6 +111,10 @@ Words are grouped by category.
   Example: `3 4 * .` → 12  
   Example: `"hello" 3 * .` → hellohellohello
 
+- **\*\*** : : \*\* ( a b -- a\*\*b ) <code>  
+  raises a to the power of b
+  Example: `2 3 \*\* .` →  8.0
+
 - **/**: : / ( a b -- a/b ) <code>  
   Divides two numbers.  
   Example: `10 2 / .` → 5

@@ -15,7 +15,11 @@ func TestMul(t *testing.T) {
 	tstRunForth(t, "MulNum", "2 3 *   2 .25 *", 6, 0.5)
 	tstRunForth(t, "MulStr", `" hi" 3 *  3 " yo" *`,
 		"hihihi", "yoyoyo")
+}
 
+func TestPow(t *testing.T) {
+	tstRunForth(t, "PowInt", `2 3 **`, 8.0)
+	tstRunForth(t, "PowFloat", `2.0 3 **`, 8.0)
 }
 
 func TestSubtract(t *testing.T) {
