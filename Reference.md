@@ -412,8 +412,18 @@ Arrays are dynamic Go slices supporting bytes, ints, floats, and strings. `@` an
 
 Variables provide named storage for any Go value, similar to traditional FORTH variables. They integrate seamlessly with array operations for automatic updates.
 
-- **variable** ( "name" -- ): Create a new global variable initialized to 0
-  Example: `variable x` creates variable x
+- **variable** ( value "name" -- ): Create a new global variable initialized to the value on the stack.
+  Example: `0 variable x` creates variable x with initial value 0
+  Example: `5 variable y` creates variable y with initial value 5
+
+- **variable-does** ( value xt "name" -- ): Create a new word that behaves like a variable but executes the xt when called.
+  The execution token (xt) receives the variable's value (address) on the stack.
+  Example: `: constant ['] @ variable-does ;` defines constant
+  Example: `3.14159 constant PI` uses the constant defined above
+
+- **constant** ( value "name" -- ): Create a constant.
+  Example: `42 constant ANSWER`
+  Example: `ANSWER .` prints 42
 
 - **@** (variable -- value): Get variable value, or get element from array in variable
   Example: `x @ .` prints the value of x

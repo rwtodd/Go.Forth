@@ -59,8 +59,8 @@ read skip " chr ord .s . type cr << >>sprintf
 bytes ints floats strings things @ ! c@ c! @len @push @pop @shift @unshift
 >>@push >>@i >>@f >>@s >>@b >>
 
-### Variables
-variable @ !
+### Variables & Constants
+variable variable-does constant @ !
 
 ### Local Variables
 (| |)

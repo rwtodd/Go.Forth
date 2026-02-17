@@ -606,15 +606,6 @@ func (vm *VM) RPop() (v any, err error) {
 	return
 }
 
-var iAmAPusher = "-- Value Pusher --" // used for all Value Pushers...
-
-// CreatePusher generates a word in the dictionary, and returns the
-// index for the word.  No name is associated with the word.
-func (vm *VM) CreatePusher(v any) uint16 {
-	vm.words = append(vm.words, &NativeWord{name: iAmAPusher, run: func(fvm *VM) error { fvm.Push(v); return nil }, immediate: false})
-	return uint16(len(vm.words) - 1)
-}
-
 func execute(vm *VM) error {
 	val, err := vm.Pop()
 	if err != nil {
