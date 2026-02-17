@@ -149,4 +149,92 @@ func stackWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "r@", run: peekR, immediate: false})
 	vm.Define(&NativeWord{name: "rdrop", run: rdrop, immediate: false})
 	vm.Define(&NativeWord{name: "depth", run: depth, immediate: false})
+	vm.Define(&NativeWord{name: "pick", run: pick, immediate: false})
+	vm.Define(&NativeWord{name: "roll", run: roll, immediate: false})
+	vm.Define(&NativeWord{name: "-roll", run: minusRoll, immediate: false})
+}
+
+// : pick ( xu ... x1 x0 u -- xu ... x1 x0 xu )
+// pick copies the nth item to the top
+func pick(vm *VM) (e error) {
+	uObj, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	u, ok := uObj.(int)
+	if !ok {
+		return ErrArgumentMsg("pick expects an integer")
+	}
+
+	slen := len(vm.Stack)
+	index := slen - 1 - u
+
+	if index < 0 {
+		return ErrUnderflow
+	}
+
+	vm.Push(vm.Stack[index])
+	return nil
+}
+
+// : roll ( xu ... x1 x0 u -- ... x1 x0 xu )
+// roll moves the nth item to the top
+func roll(vm *VM) (e error) {
+	uObj, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	u, ok := uObj.(int)
+	if !ok {
+		return ErrArgumentMsg("roll expects an integer")
+	}
+
+	if u == 0 {
+		return nil
+	}
+
+	slen := len(vm.Stack)
+	index := slen - 1 - u
+
+	if index < 0 {
+		return ErrUnderflow
+	}
+
+	val := vm.Stack[index]
+	// Shift everything down
+	copy(vm.Stack[index:], vm.Stack[index+1:])
+	vm.Stack[slen-1] = val
+
+	return nil
+}
+
+// : -roll ( xu ... x1 x0 u -- x0 xu ... x1 )
+// -roll moves the top item to the nth position
+func minusRoll(vm *VM) (e error) {
+	uObj, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	u, ok := uObj.(int)
+	if !ok {
+		return ErrArgumentMsg("-roll expects an integer")
+	}
+
+	if u == 0 {
+		return nil
+	}
+
+	slen := len(vm.Stack)
+	target := slen - 1 - u
+
+	if target < 0 {
+		return ErrUnderflow
+	}
+
+	val := vm.Stack[slen-1]
+	// Shift everything up
+	copy(vm.Stack[target+1:], vm.Stack[target:slen-1])
+	vm.Stack[target] = val
+
+	return nil
 }

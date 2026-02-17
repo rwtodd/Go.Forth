@@ -17,7 +17,7 @@ func TestImmediateWord(t *testing.T) {
 
 	code := `
 	: var-i  postpone r> postpone i postpone swap postpone >r ; immediate
-	: test 3 0 DO " %04d: test!\n" << var-i >>sprintf type LOOP ;
+	: test 3 0 DO " %04d: test!\n" << var-i >> sprintf type LOOP ;
 	`
 	expected := "0000: test!\n0001: test!\n0002: test!\n"
 
@@ -45,7 +45,7 @@ func TestImmediateWord(t *testing.T) {
 	// Test 2: Verify `immediate` works inside a definition (legacy/non-standard but supported)
 	code2 := `
 	: var-i-inner immediate postpone r> postpone i postpone swap postpone >r ;
-	: test2 3 0 DO " %04d: test!\n" << var-i-inner >>sprintf type LOOP ;
+	: test2 3 0 DO " %04d: test!\n" << var-i-inner >> sprintf type LOOP ;
     `
 	vm.ResetState()
 	mark(vm)

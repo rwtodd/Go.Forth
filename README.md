@@ -32,7 +32,7 @@ always be provided from the Go side of the wall.
 This is just preliminary work.  Words implemented, organized by category:
 
 ### Stack Manipulation
-dup drop swap over rot -rot nip tuck >r r> r@ rdrop depth
+dup drop swap over rot -rot pick roll -roll nip tuck >r r> r@ rdrop depth
 
 ### Arithmetic & Math
 + - * / sqrt ** log log10 log2 max min sin cos tan round floor ceil

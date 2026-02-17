@@ -21,10 +21,10 @@ func TestAnyArraySet(t *testing.T) {
 }
 
 func TestAnyArrayPush(t *testing.T) {
-	tstRunForth(t, "AnyPush", `0 things " first" swap @push 42 swap @push dup @len swap 0 @`, 2, "first")
+	tstRunForth(t, "AnyPush", `0 things " first" @push 42 @push dup @len swap 0 @`, 2, "first")
 }
 
 func TestAnyArrayPop(t *testing.T) {
-	tstRunForth(t, "AnyPop", `0 things 42 swap @push @pop drop @len`, 0)
-	tstRunForth(t, "AnyPopVal", `0 things 42 swap @push @pop nip`, 42)
+	tstRunForth(t, "AnyPop", `0 things 42 @push @pop drop @len`, 0)
+	tstRunForth(t, "AnyPopVal", `0 things 42 @push @pop nip`, 42)
 }

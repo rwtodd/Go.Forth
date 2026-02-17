@@ -8,15 +8,15 @@ func TestVarLen(t *testing.T) {
 	// Note: The parser consumes the delimiter space after string words.
 	// So " Hello" -> "Hello" on stack.
 
-	tstRunForth(t, "Simple Sprintf", `" Hello %s!" << " World" >>sprintf`, "Hello World!")
+	tstRunForth(t, "Simple Sprintf", `" Hello %s!" << " World" >> sprintf`, "Hello World!")
 
-	tstRunForth(t, "Integers", `" %d + %d = %d" << 1 2 1 2 + >>sprintf`, "1 + 2 = 3")
+	tstRunForth(t, "Integers", `" %d + %d = %d" << 1 2 1 2 + >> sprintf`, "1 + 2 = 3")
 
-	tstRunForth(t, "Mixed Types", `" Float: %.1f, Int: %d, Str: %s" << 1.5 42 " Foo" >>sprintf`, "Float: 1.5, Int: 42, Str: Foo")
+	tstRunForth(t, "Mixed Types", `" Float: %.1f, Int: %d, Str: %s" << 1.5 42 " Foo" >> sprintf`, "Float: 1.5, Int: 42, Str: Foo")
 
 	// Nested
 	tstRunForth(t, "Nested",
-		`" Outer: %s" << " Inner: %s" << " Val" >>sprintf >>sprintf`,
+		`" Outer: %s" << " Inner: %s" << " Val" >> sprintf >> sprintf`,
 		"Outer: Inner: Val")
 
 	// Test depth separately

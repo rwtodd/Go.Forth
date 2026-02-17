@@ -313,11 +313,11 @@ func byteSet(vm *VM) error {
 
 // @push appends value to array and returns modified array
 func arrayPush(vm *VM) error {
-	arr, err := vm.Pop()
+	val, err := vm.Pop()
 	if err != nil {
 		return err
 	}
-	val, err := vm.Pop()
+	arr, err := vm.Pop()
 	if err != nil {
 		return err
 	}
@@ -578,11 +578,11 @@ func arrayShift(vm *VM) error {
 
 // @unshift prepends value to array and returns modified array
 func arrayUnshift(vm *VM) error {
-	arr, err := vm.Pop()
+	val, err := vm.Pop()
 	if err != nil {
 		return err
 	}
-	val, err := vm.Pop()
+	arr, err := vm.Pop()
 	if err != nil {
 		return err
 	}
