@@ -2,7 +2,9 @@
 
 package forth
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Array creation words
 
@@ -66,6 +68,21 @@ func stringArray(vm *VM) error {
 	return nil
 }
 
+// things creates an any array of given size
+func things(vm *VM) error {
+	size, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	sz, ok := size.(int)
+	if !ok || sz < 0 {
+		return ErrArgumentMsg("things expects non-negative integer size")
+	}
+	arr := make([]any, sz)
+	vm.Push(arr)
+	return nil
+}
+
 // Array access words
 
 // @ gets element at index from array or value from variable
@@ -111,6 +128,11 @@ func arrayGet(vm *VM) error {
 		}
 		vm.Push(a[index])
 	case []string:
+		if index < 0 || index >= len(a) {
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
+		}
+		vm.Push(a[index])
+	case []any:
 		if index < 0 || index >= len(a) {
 			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
 		}
@@ -212,6 +234,14 @@ func arraySet(vm *VM) error {
 			return ErrArgumentMsg("string array requires string value")
 		}
 		a[index] = v
+		if varPtr != nil {
+			varPtr.value = a
+		}
+	case []any:
+		if index < 0 || index >= len(a) {
+			return ErrIndexOutOfBoundsMsg(fmt.Sprintf("index %d out of bounds (len %d)", index, len(a)))
+		}
+		a[index] = val
 		if varPtr != nil {
 			varPtr.value = a
 		}
@@ -366,6 +396,14 @@ func arrayPush(vm *VM) error {
 		} else {
 			vm.Push(newArr)
 		}
+	case []any:
+		newArr := append(a, val)
+		if varPtr != nil {
+			varPtr.value = newArr
+			vm.Push(varPtr)
+		} else {
+			vm.Push(newArr)
+		}
 	default:
 		return ErrArgumentMsg("expected array or variable")
 	}
@@ -436,6 +474,19 @@ func arrayPop(vm *VM) error {
 			vm.Push(newArr)
 		}
 		vm.Push(val)
+	case []any:
+		if len(a) == 0 {
+			return ErrArgumentMsg("cannot pop empty array")
+		}
+		val := a[len(a)-1]
+		newArr := a[:len(a)-1]
+		if varPtr != nil {
+			varPtr.value = newArr
+			vm.Push(varPtr)
+		} else {
+			vm.Push(newArr)
+		}
+		vm.Push(val)
 	default:
 		return ErrArgumentMsg("expected array or variable")
 	}
@@ -494,6 +545,19 @@ func arrayShift(vm *VM) error {
 		}
 		vm.Push(val)
 	case []string:
+		if len(a) == 0 {
+			return ErrArgumentMsg("cannot shift empty array")
+		}
+		val := a[0]
+		newArr := a[1:]
+		if varPtr != nil {
+			varPtr.value = newArr
+			vm.Push(varPtr)
+		} else {
+			vm.Push(newArr)
+		}
+		vm.Push(val)
+	case []any:
 		if len(a) == 0 {
 			return ErrArgumentMsg("cannot shift empty array")
 		}
@@ -597,6 +661,14 @@ func arrayUnshift(vm *VM) error {
 		} else {
 			vm.Push(newArr)
 		}
+	case []any:
+		newArr := append([]any{val}, a...)
+		if varPtr != nil {
+			varPtr.value = newArr
+			vm.Push(varPtr)
+		} else {
+			vm.Push(newArr)
+		}
 	default:
 		return ErrArgumentMsg("expected array or variable")
 	}
@@ -621,6 +693,8 @@ func arrayLen(vm *VM) error {
 		vm.Push(len(a))
 	case []string:
 		vm.Push(len(a))
+	case []any:
+		vm.Push(len(a))
 	default:
 		return ErrArgumentMsg("expected array or variable")
 	}
@@ -633,6 +707,7 @@ func arrayWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "ints", run: ints, immediate: false})
 	vm.Define(&NativeWord{name: "floats", run: floats, immediate: false})
 	vm.Define(&NativeWord{name: "strings", run: stringArray, immediate: false})
+	vm.Define(&NativeWord{name: "things", run: things, immediate: false})
 	vm.Define(&NativeWord{name: "@", run: arrayGet, immediate: false})
 	vm.Define(&NativeWord{name: "!", run: arraySet, immediate: false})
 	vm.Define(&NativeWord{name: "c@", run: byteGet, immediate: false})

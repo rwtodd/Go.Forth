@@ -56,7 +56,8 @@ read skip " chr ord .s . type cr << >>sprintf
 \ (
 
 ### Arrays
-bytes ints floats strings @ ! c@ c! @len @push @pop @shift @unshift
+bytes ints floats strings things @ ! c@ c! @len @push @pop @shift @unshift
+>>@push >>@i >>@f >>@s >>@b >>
 
 ### Variables
 variable @ !

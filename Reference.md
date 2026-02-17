@@ -72,6 +72,30 @@ Words are grouped by category.
   Collects arguments pushed since `<<` and formats them using the format string provided before `<<`.  
   Example: `"val: %d" << 42 >>sprintf .` → val: 42
 
+- **>>@push**: endVarLenPush ( array item1...itemN -- array' )  
+  Collects arguments pushed since `<<` and appends them to the array (or variable containing an array) provided before `<<`.  
+  Example: `0 ints << 1 2 3 >>@push .s` → stack: [1 2 3]
+
+- **>>@i**: endVarLenInts ( item1...itemN -- []int )  
+  Collects arguments pushed since `<<` into a new integer array.  
+  Example: `<< 10 20 >>@i .s` → stack: [10 20]
+
+- **>>@f**: endVarLenFloats ( item1...itemN -- []float64 )  
+  Collects arguments pushed since `<<` into a new float array.  
+  Example: `<< 1.5 2.5 >>@f .s` → stack: [1.5 2.5]
+
+- **>>@s**: endVarLenStrings ( item1...itemN -- []string )  
+  Collects arguments pushed since `<<` into a new string array.  
+  Example: `<< "a" "b" >>@s .s` → stack: [a b]
+
+- **>>@b**: endVarLenBytes ( item1...itemN -- []byte )  
+  Collects arguments pushed since `<<` into a new byte array.  
+  Example: `<< 65 66 >>@b .s` → stack: [65 66]
+
+- **>>**: endVarLenAny ( item1...itemN -- []any )  
+  Collects arguments pushed since `<<` into a new generic array.  
+  Example: `<< 1 " a" >> .s` → stack: [1 "a"]
+
 ## Numeric Operations
 
 - **+**: : + ( a b -- a+b ) <code>  
@@ -353,6 +377,9 @@ Arrays are dynamic Go slices supporting bytes, ints, floats, and strings. `@` an
 
 - **strings** (size -- []string): Create a string array of given size
   Example: `4 strings` creates a 4-element string array
+
+- **things** (size -- []any): Create a generic array of given size
+  Example: `3 things` creates a 3-element generic array
 
 - **@** (array index -- value): Get element at index with lossless type coercion
   Example: `myarray 0 @ .` gets first element
