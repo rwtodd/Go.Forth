@@ -59,6 +59,16 @@ func (w *NativeWord) Name() string {
 	return w.name
 }
 
+// NewNativeWord creates a new native word
+func NewNativeWord(name string, run func(*VM) error) *NativeWord {
+	return &NativeWord{name: name, run: run}
+}
+
+// NewImmediateWord creates a new immediate native word
+func NewImmediateWord(name string, run func(*VM) error) *NativeWord {
+	return &NativeWord{name: name, run: run, immediate: true}
+}
+
 func (w *NativeWord) IsImmediate() bool {
 	return w.immediate
 }
@@ -235,6 +245,8 @@ type VM struct {
 
 	CompStack []CompilationCtx // Stack of compilation contexts
 	HeadScope *Scope           // Current variable scope
+
+	ActivatedExtensions map[string]bool // Set of activated extensions
 }
 
 // CurrentCompCtx returns the current compilation context, or nil if not compiling
@@ -795,8 +807,9 @@ func (vm *VM) RunAt(startIP int) error {
 // wordset
 func NewVM() *VM {
 	ans := &VM{
-		dict:   make(map[string]uint16),
-		strMap: make(map[string]int),
+		dict:                make(map[string]uint16),
+		strMap:              make(map[string]int),
+		ActivatedExtensions: make(map[string]bool),
 	}
 
 	// SPECIAL... must be specific opcodes to match constants
@@ -828,6 +841,7 @@ func NewVM() *VM {
 	dictWordsInit(ans)
 	comparisonWordsInit(ans)
 	varLenWordsInit(ans)
+	extensionsWordsInit(ans)
 
 	// these come from this file...
 	ans.Define(&NativeWord{name: "mark", run: mark, immediate: false})

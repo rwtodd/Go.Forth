@@ -44,7 +44,7 @@ dup drop swap over rot -rot pick roll -roll nip tuck >r r> r@ rdrop depth
 if else then recur do loop +loop i j leave exit begin again until while repeat
 
 ### Input/Output
-read skip " chr ord .s . type cr << >>sprintf
+read skip " chr ord .s . type cr sprintf
 
 ### Compilation & Definition
 : ; literal postpone immediate compile, ' ['] execute
@@ -57,7 +57,10 @@ read skip " chr ord .s . type cr << >>sprintf
 
 ### Arrays
 bytes ints floats strings things @ ! c@ c! @len @push @pop @shift @unshift
->>@push >>@i >>@f >>@s >>@b >>
+<@push> <ints> <floats> <strings> <things> <<"
+
+### Extensions
+extension-list <activate-extensions>
 
 ### Variables & Constants
 variable variable-does constant @ !

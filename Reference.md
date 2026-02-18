@@ -570,6 +570,20 @@ Dictionaries provide key-value storage with string keys, supporting any Go value
   Forgets all definitions defined since the last `mark`.  
   Example: `forget`
 
+## Extensions
+
+Extensions allow adding optional functionality to the interpreter.
+
+- **extension-list**: extension-list ( -- []string )
+  Returns a list of all registered extensions available for activation.
+  Example: `extension-list .` -> [regex]
+
+- **<activate-extensions>**: activateExtensions ( name1 ... nameN count -- )
+  Activates the specified extensions. If an extension is not found or fails to initialize, an error is returned.
+  Activation is idempotent; activating an already-active extension is a no-op.
+  **Note**: This word calls `mark` internally. You cannot `forget` past an extension activation point.
+  Example: `<<" regex ">> <activate-extensions>`
+
 ## Internal Words
 
 These are typically not used directly but are part of the implementation:
