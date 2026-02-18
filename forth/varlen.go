@@ -4,6 +4,7 @@ package forth
 
 import (
 	"fmt"
+	"io"
 )
 
 // sprintf ( format args... count -- result )
@@ -399,6 +400,58 @@ func endVarLen(vm *VM) error {
 	return nil
 }
 
+// varLenQuote ( string1 ... stringN count -- )
+// Parses whitespace-separated tokens until ">>". (Interpreting/Compiling)
+func varLenQuote(vm *VM) error {
+	buf := make([]rune, 0, 20)
+	count := 0
+	for {
+		// 1. Eat whitespace to start next token
+		ch, err := eatWhitespace(vm.Source)
+		if err != nil {
+			if err == io.EOF {
+				return ErrArgumentMsg("unexpected EOF inside <<\" ... >>")
+			}
+			return err
+		}
+
+		// 2. Read token until whitespace
+		// Prepare buf with 'ch'
+		buf = buf[:0]
+		buf = append(buf, ch)
+		// Read subsequent chars
+		buf, err = delimitedWSRead(vm.Source, buf)
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		token := string(buf)
+
+		if token == "\">>" {
+			break
+		}
+
+		if vm.CurrentCompCtx() != nil {
+			compileLiteral(vm, token)
+		} else {
+			vm.Push(token)
+		}
+		count++
+
+		if err == io.EOF {
+			return ErrArgumentMsg("unexpected EOF inside <<\" ... >>")
+		}
+	}
+
+	if vm.CurrentCompCtx() != nil {
+		compileLiteral(vm, count)
+	} else {
+		vm.Push(count)
+	}
+
+	return nil
+}
+
 // varLenWordsInit adds variable-length argument words to the VM
 func varLenWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "sprintf", run: sprintf, immediate: false})
@@ -411,4 +464,5 @@ func varLenWordsInit(vm *VM) {
 
 	vm.Define(&NativeWord{name: "<<", run: startVarLen, immediate: true})
 	vm.Define(&NativeWord{name: ">>", run: endVarLen, immediate: true})
+	vm.Define(&NativeWord{name: "<<\"", run: varLenQuote, immediate: true})
 }

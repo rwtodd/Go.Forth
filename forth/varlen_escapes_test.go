@@ -34,3 +34,23 @@ func TestEscapes(t *testing.T) {
 	// Unknown escape \a -> a
 	tstRunForth(t, "Unknown Escape Becomes Char", `" \a"`, `a`)
 }
+
+func TestVarLenQuote(t *testing.T) {
+	// 1. Basic usage
+	tstRunForth(t, "Basic Quote", `<<" one two three ">>`, "one", "two", "three", 3)
+
+	// 2. Used with varlen operators like sprintf
+	tstRunForth(t, "Quote with Sprintf", `" %s-%s-%s" <<" one two three ">> sprintf`, "one-two-three")
+
+	// 3. Delimiter syntax (must be whitespace separated)
+	tstRunForth(t, "Merged Delimiter", `<<" one two three>> ">>`, "one", "two", "three>>", 3)
+
+	// 4. Case preservation
+	tstRunForth(t, "Case Preservation", `<<" One Two THREE ">>`, "One", "Two", "THREE", 3)
+
+	// 5. Symbols/Punctuation
+	tstRunForth(t, "Symbols", `<<" + - * / ">>`, "+", "-", "*", "/", 4)
+
+	// 6. Compilation mode
+	tstRunForth(t, "Compiled Quote", `: test <<" A B C ">> ; test`, "A", "B", "C", 3)
+}

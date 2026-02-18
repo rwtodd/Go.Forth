@@ -30,6 +30,18 @@ Words are grouped by category.
   Rotates the top three items in the opposite direction.  
   Example: `1 2 3 -rot .s` → stack: 3 1 2
 
+- **pick**: pick ( xu ... x1 x0 u -- xu ... x1 x0 xu )
+  Copies the u-th item (0-indexed) to the top of the stack. `0 pick` is `dup`, `1 pick` is `over`.
+  Example: `10 20 30 0 pick .s` → stack: 10 20 30 30
+
+- **roll**: roll ( xu ... x1 x0 u -- ... x1 x0 xu )
+  Rotates the u-th item to the top of the stack. `2 roll` is `rot`, `1 roll` is `swap`.
+  Example: `10 20 30 2 roll .s` → stack: 20 30 10
+
+- **-roll**: -roll ( xu ... x1 x0 u -- x0 xu ... x1 )
+  Rotates the top of the stack to the u-th position. `2 -roll` is `-rot`.
+  Example: `10 20 30 2 -roll .s` → stack: 30 10 20
+
 - **nip**: : nip swap drop ;  
   Removes the second item from the stack.  
   Example: `1 2 nip .s` → stack: 2
@@ -60,41 +72,50 @@ Words are grouped by category.
 
 ## Variable Length Arguments
 
+Variable length arguments allow words to take an arbitrary number of items from the stack.
+The system uses `<<` to mark the start, and `>>` to calculate the number of items that have been placed on the stack since the `<<`.
+
 - **<<**: startVarLen ( -- )  
   Marks the start of a variable-length argument list by pushing the current stack depth to the return stack.  
   Example: `<< 1 2 3 ...`
 
-- **(sprintf)**: sprintf ( fmt args... count -- result )  
-  Formats a string using the provided format string and arguments. The count of arguments must be on top of the stack.  
-  Example: `"val: %d" 42 1 (sprintf) .` → val: 42
+- **>>**: endVarLen ( -- count )  
+  Calculates the number of items pushed to the stack since the last `<<`.  
+  Example: `<< 10 20 >> .` → 2
 
-- **>>sprintf**: endVarLenSprintf ( fmt args... -- result )  
-  Collects arguments pushed since `<<` and formats them using the format string provided before `<<`.  
-  Example: `"val: %d" << 42 >>sprintf .` → val: 42
+- **<<"**: varLenQuote ( -- string1 ... stringN count )  
+  Parses whitespace-separated tokens until the `">>` token is found.
+  Treats each token as a string literal.
+  Compatible with interpretation and compilation.
+  Example: `<<" one two three ">> .s` → stack: one two three 3
 
-- **>>@push**: endVarLenPush ( array item1...itemN -- array' )  
-  Collects arguments pushed since `<<` and appends them to the array (or variable containing an array) provided before `<<`.  
-  Example: `0 ints << 1 2 3 >>@push .s` → stack: [1 2 3]
+- **sprintf**: sprintf ( fmt args... count -- result )  
+  Formats a string using the provided format string and arguments. Can be used with `<< ... >>`.  
+  Example: `"val: %d" << 42 >> sprintf .` → val: 42
 
-- **>>@i**: endVarLenInts ( item1...itemN -- []int )  
-  Collects arguments pushed since `<<` into a new integer array.  
-  Example: `<< 10 20 >>@i .s` → stack: [10 20]
+- **<@push>**: varLenPush ( array item1...itemN count -- array' )  
+  Appends items to the array (or variable containing an array) provided before `<<`.  
+  Example: `0 ints << 1 2 3 >> <@push> .s` → stack: [1 2 3]
 
-- **>>@f**: endVarLenFloats ( item1...itemN -- []float64 )  
-  Collects arguments pushed since `<<` into a new float array.  
-  Example: `<< 1.5 2.5 >>@f .s` → stack: [1.5 2.5]
+- **<ints>**: varLenInts ( item1...itemN count -- []int )  
+  Creates a new integer array from the stack items.  
+  Example: `<< 10 20 >> <ints> .s` → stack: [10 20]
 
-- **>>@s**: endVarLenStrings ( item1...itemN -- []string )  
-  Collects arguments pushed since `<<` into a new string array.  
-  Example: `<< "a" "b" >>@s .s` → stack: [a b]
+- **<floats>**: varLenFloats ( item1...itemN count -- []float64 )  
+  Creates a new float array from the stack items.  
+  Example: `<< 1.5 2.5 >> <floats> .s` → stack: [1.5 2.5]
 
-- **>>@b**: endVarLenBytes ( item1...itemN -- []byte )  
-  Collects arguments pushed since `<<` into a new byte array.  
-  Example: `<< 65 66 >>@b .s` → stack: [65 66]
+- **<strings>**: varLenStrings ( item1...itemN count -- []string )  
+  Creates a new string array from the stack items.  
+  Example: `<< "a" "b" >> <strings> .s` → stack: [a b]
 
-- **>>**: endVarLenAny ( item1...itemN -- []any )  
-  Collects arguments pushed since `<<` into a new generic array.  
-  Example: `<< 1 " a" >> .s` → stack: [1 "a"]
+- **<bytes>**: varLenBytes ( item1...itemN count -- []byte )  
+  Creates a new byte array from the stack items.  
+  Example: `<< 65 66 >> <bytes> .s` → stack: [65 66]
+
+- **<things>**: varLenAny ( item1...itemN count -- []any )  
+  Creates a new generic array from the stack items.  
+  Example: `<< 1 " a" >> <things> .s` → stack: [1 "a"]
 
 ## Numeric Operations
 
@@ -397,8 +418,8 @@ Arrays are dynamic Go slices supporting bytes, ints, floats, and strings. `@` an
 - **c!** (value array index -- ): Set byte at index with auto-wrap (value & 0xff)
   Example: `300 mybytes 0 c!` sets byte to 44 (300 & 0xff)
 
-- **@push** (value array -- array'): Append value to array and return modified array
-  Example: `99 myarray @push` appends 99 and returns new array
+- **@push** (array value -- array'): Append value to array and return modified array
+  Example: `myarray 99 @push` appends 99 and returns new array
 
 - **@pop** (array -- array' value): Remove and return last element and modified array
   Example: `myarray @pop .` pops last element and prints it
@@ -406,8 +427,8 @@ Arrays are dynamic Go slices supporting bytes, ints, floats, and strings. `@` an
 - **@shift** (array -- array' value): Remove and return first element and modified array
   Example: `myarray @shift .` shifts first element and prints it
 
-- **@unshift** (value array -- array'): Prepend value to array and return modified array
-  Example: `0 myarray @unshift` prepends 0 and returns new array
+- **@unshift** (array value -- array'): Prepend value to array and return modified array
+  Example: `myarray 0 @unshift` prepends 0 and returns new array
 
 - **@len** (array -- length): Get array length
   Example: `myarray @len .` prints array length
@@ -441,8 +462,8 @@ Variables provide named storage for any Go value, similar to traditional FORTH v
 
 When array operations are performed on variables containing slices, the variable is automatically updated with the modified array and the variable is returned on the stack for consistent stack pictures:
 
-- **@push** (value variable -- variable): Append to array in variable
-  Example: `99 x @push` appends 99 to array in x (x auto-updated, x returned)
+- **@push** (variable value -- variable): Append to array in variable
+  Example: `x 99 @push` appends 99 to array in x (x auto-updated, x returned)
 
 - **@pop** (variable -- variable value): Pop from array in variable
   Example: `x @pop drop` pops from array in x (x auto-updated, value discarded, x remains)
@@ -450,8 +471,8 @@ When array operations are performed on variables containing slices, the variable
 - **@shift** (variable -- variable value): Shift from array in variable
   Example: `x @shift drop` shifts from array in x (x auto-updated, value discarded, x remains)
 
-- **@unshift** (value variable -- variable): Unshift to array in variable
-  Example: `0 x @unshift` prepends 0 to array in x (x auto-updated, x returned)
+- **@unshift** (variable value -- variable): Unshift to array in variable
+  Example: `x 0 @unshift` prepends 0 to array in x (x auto-updated, x returned)
 
 - **@len** (variable -- length): Get length of array in variable
   Example: `x @len .` prints length of array in x
