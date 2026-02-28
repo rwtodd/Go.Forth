@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/rwtodd/Go.Forth/extensions/random"
 	_ "github.com/rwtodd/Go.Forth/extensions/regex"
 	"github.com/rwtodd/Go.Forth/forth"
 )

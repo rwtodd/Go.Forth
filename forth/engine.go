@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // define a few constant opcodes that are reliable
@@ -181,6 +182,16 @@ func (c Closure) Compile(vm *VM) error {
 // Variable represents a FORTH variable
 type Variable struct {
 	value any
+}
+
+// Value returns the current value of the variable
+func (v *Variable) Value() any {
+	return v.value
+}
+
+// SetValue sets the value of the variable
+func (v *Variable) SetValue(val any) {
+	v.value = val
 }
 
 // VariableWord is a Word that holds a Variable and an optional ExecutionToken
@@ -371,6 +382,28 @@ func constant(vm *VM) error {
 		return err
 	}
 
+	return createConstant(vm, str, val)
+}
+
+func parenConstant(vm *VM) error {
+	strVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	str, ok := strVal.(string)
+	if !ok {
+		return ErrArgumentMsg("(constant) expects a string name")
+	}
+
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	return createConstant(vm, str, val)
+}
+
+func createConstant(vm *VM, name string, val any) error {
 	// Look up @
 	atIdx, ok := vm.dict["@"]
 	if !ok {
@@ -380,7 +413,7 @@ func constant(vm *VM) error {
 	// Create VariableWord with @ as XT
 	varObj := &Variable{value: val}
 	word := &VariableWord{
-		name: str,
+		name: strings.ToLower(strings.TrimSpace(name)),
 		val:  varObj,
 		xt:   WordToken{Token: atIdx},
 	}
@@ -417,9 +450,45 @@ func variableDoes(vm *VM) error {
 		return err
 	}
 
+	return createVariableDoes(vm, str, val, xt)
+}
+
+func parenVariableDoes(vm *VM) error {
+	strVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	str, ok := strVal.(string)
+	if !ok {
+		return ErrArgumentMsg("(variable-does) expects a string name")
+	}
+
+	xtVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	var xt ExecutionToken
+	if tok, ok := xtVal.(ExecutionToken); ok {
+		xt = tok
+	} else if idx, ok := xtVal.(int); ok {
+		xt = WordToken{Token: uint16(idx)}
+	} else {
+		return ErrArgumentMsg("(variable-does) expects execution token or word index")
+	}
+
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	return createVariableDoes(vm, str, val, xt)
+}
+
+func createVariableDoes(vm *VM, name string, val any, xt ExecutionToken) error {
 	varObj := &Variable{value: val}
 	word := &VariableWord{
-		name: str,
+		name: strings.ToLower(strings.TrimSpace(name)),
 		val:  varObj,
 		xt:   xt,
 	}
@@ -442,10 +511,32 @@ func variable(vm *VM) error {
 		return err
 	}
 
+	return createVariable(vm, str, val)
+}
+
+func parenVariable(vm *VM) error {
+	strVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	str, ok := strVal.(string)
+	if !ok {
+		return ErrArgumentMsg("(variable) expects a string name")
+	}
+
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	return createVariable(vm, str, val)
+}
+
+func createVariable(vm *VM, name string, val any) error {
 	varObj := &Variable{value: val}
 	// Optimization: nil XT avoids overhead
 	word := &VariableWord{
-		name: str,
+		name: strings.ToLower(strings.TrimSpace(name)),
 		val:  varObj,
 		xt:   nil,
 	}
@@ -848,8 +939,11 @@ func NewVM() *VM {
 	ans.Define(&NativeWord{name: "forget", run: forget, immediate: false})
 	ans.Define(&NativeWord{name: "debug.", run: debugPrint, immediate: false})
 	ans.Define(&NativeWord{name: "variable", run: variable, immediate: false})
+	ans.Define(&NativeWord{name: "(variable)", run: parenVariable, immediate: false})
 	ans.Define(&NativeWord{name: "variable-does", run: variableDoes, immediate: false})
+	ans.Define(&NativeWord{name: "(variable-does)", run: parenVariableDoes, immediate: false})
 	ans.Define(&NativeWord{name: "constant", run: constant, immediate: false})
+	ans.Define(&NativeWord{name: "(constant)", run: parenConstant, immediate: false})
 	ans.Define(&NativeWord{name: "execute", run: execute, immediate: false})
 
 	_ = mark(ans) // give the vm an initial mark after all the core words are added

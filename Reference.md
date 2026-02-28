@@ -441,14 +441,26 @@ Variables provide named storage for any Go value, similar to traditional FORTH v
   Example: `0 variable x` creates variable x with initial value 0
   Example: `5 variable y` creates variable y with initial value 5
 
+- **(variable)** ( value name -- ): Stack-based version of variable.
+  Takes the name as a string from the stack and lowercases it.
+  Example: `0 " X" (variable)` creates variable x
+
 - **variable-does** ( value xt "name" -- ): Create a new word that behaves like a variable but executes the xt when called.
   The execution token (xt) receives the variable's value (address) on the stack.
   Example: `: constant ['] @ variable-does ;` defines constant
   Example: `3.14159 constant PI` uses the constant defined above
 
+- **(variable-does)** ( value xt name -- ): Stack-based version of variable-does.
+  Takes the name as a string from the stack and lowercases it.
+  Example: `: my-const ['] @ " MYVAR" (variable-does) ;`
+
 - **constant** ( value "name" -- ): Create a constant.
   Example: `42 constant ANSWER`
   Example: `ANSWER .` prints 42
+
+- **(constant)** ( value name -- ): Stack-based version of constant.
+  Takes the name as a string from the stack and lowercases it.
+  Example: `42 " ANSWER" (constant)`
 
 - **@** (variable -- value): Get variable value, or get element from array in variable
   Example: `x @ .` prints the value of x
