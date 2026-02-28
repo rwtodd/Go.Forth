@@ -21,9 +21,9 @@ func TestImmediateWord(t *testing.T) {
 	`
 	expected := "0000: test!\n0001: test!\n0002: test!\n"
 
-	vm.ResetState()
+	vm.ClearResetState()
 	mark(vm)
-	err := vm.Run(strings.NewReader(code), io.Discard)
+	err := vm.RunFromSource(strings.NewReader(code), "test", io.Discard)
 	if err != nil {
 		t.Fatalf("Failed to run code: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestImmediateWord(t *testing.T) {
 	}
 	// this time capture the output into a buffer
 	var buf strings.Builder
-	err = vm.Run(strings.NewReader("test"), &buf)
+	err = vm.RunFromSource(strings.NewReader("test"), "test", &buf)
 	if err != nil {
 		t.Errorf("Failed to execute test word: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestImmediateWord(t *testing.T) {
     `
 	vm.ResetState()
 	mark(vm)
-	err = vm.Run(strings.NewReader(code2), io.Discard)
+	err = vm.RunFromSource(strings.NewReader(code2), "test", io.Discard)
 	if err != nil {
 		t.Fatalf("Failed to run code: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestImmediateWord(t *testing.T) {
 	}
 	// this time capture the output into a buffer
 	var buf2 strings.Builder
-	err = vm.Run(strings.NewReader("test2"), &buf2)
+	err = vm.RunFromSource(strings.NewReader("test2"), "test", &buf2)
 	if err != nil {
 		t.Errorf("Failed to execute test2 word: %v", err)
 	}

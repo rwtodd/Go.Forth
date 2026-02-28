@@ -341,6 +341,16 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Executes the word execution token on the stack.  
   Example: `' dup execute`
 
+- **eval**: eval ( s -- )  
+  Interprets the string `s` as Forth code.  
+  Immediate word. Cannot be used while already compiling a definition.  
+  Example: `" 1 2 + ." eval` → 3
+
+- **load**: load ( s -- )  
+  Interprets the file at path `s` as Forth code.  
+  Immediate word. Cannot be used while already compiling a definition.  
+  Example: `" constants.4th" load`
+
 ## Control Flow Words
 
 - **if**: IF is an immediate word that stores a fixup address on the stack for ELSE / THEN to find, and stores a (bzr) with a dummy branch amount in the code stream.  

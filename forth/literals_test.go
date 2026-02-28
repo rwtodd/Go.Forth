@@ -21,7 +21,7 @@ func TestLiteralOptimization(t *testing.T) {
 	;`
 
 	// Run the definition
-	if err := vm.Run(strings.NewReader(src), nil); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(src), "test", nil); err != nil {
 		t.Fatalf("Failed to compile test-lits: %v", err)
 	}
 
@@ -93,7 +93,7 @@ func TestFloat16Optimization(t *testing.T) {
 		70000.0
 	;`
 
-	if err := vm.Run(strings.NewReader(src), nil); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(src), "test", nil); err != nil {
 		t.Fatalf("Failed to compile test-float-lits: %v", err)
 	}
 
@@ -153,7 +153,7 @@ func TestDecimalOptimization(t *testing.T) {
 		123.4567
 	;`
 
-	if err := vm.Run(strings.NewReader(src), nil); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(src), "test", nil); err != nil {
 		t.Fatalf("Failed to compile test-dec-lits: %v", err)
 	}
 

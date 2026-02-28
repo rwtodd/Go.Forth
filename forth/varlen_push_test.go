@@ -18,7 +18,7 @@ func tstRunForthErrIgnoreStack(t *testing.T, name string, code string, expectedE
 		if markerr := mark(vm); markerr != nil {
 			t.Errorf("Unexpected error: %v", markerr)
 		}
-		if err := vm.Run(tprog, io.Discard); !errors.Is(err, expectedErr) {
+		if err := vm.RunFromSource(tprog, "test", io.Discard); !errors.Is(err, expectedErr) {
 			t.Errorf("Error mismatch. Expected: %v, Got: %v", expectedErr, err)
 		}
 		if forgeterr := forget(vm); forgeterr != nil {

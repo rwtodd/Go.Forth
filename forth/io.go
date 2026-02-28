@@ -3,7 +3,6 @@
 package forth
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"unicode"
@@ -11,7 +10,7 @@ import (
 )
 
 // eatWhitespace eats whitespace and returns the next non-ws char
-func eatWhitespace(r *bufio.Reader) (rune, error) {
+func eatWhitespace(r io.RuneReader) (rune, error) {
 	var (
 		ch  rune
 		err error
@@ -30,7 +29,7 @@ func eatWhitespace(r *bufio.Reader) (rune, error) {
 // delimitedRead reads from the `source` until the delimiter (a rune)
 // is found.  It will use the provided `buf` to
 // avoid allocation, if one is provided.
-func delimitedRead(source *bufio.Reader, delim rune, buf []rune) ([]rune, error) {
+func delimitedRead(source io.RuneReader, delim rune, buf []rune) ([]rune, error) {
 	var (
 		ch  rune
 		err error
@@ -53,7 +52,7 @@ func delimitedRead(source *bufio.Reader, delim rune, buf []rune) ([]rune, error)
 // delimitedWSRead reads from the `source` until whitespace
 // is found.  It will use the provided `buf` to
 // avoid allocation, if one is provided.
-func delimitedWSRead(source *bufio.Reader, buf []rune) ([]rune, error) {
+func delimitedWSRead(source io.RuneReader, buf []rune) ([]rune, error) {
 	var (
 		ch  rune
 		err error
@@ -107,9 +106,9 @@ func read(vm *VM) error {
 	buf := make([]rune, 0, 20)
 
 	if delim == ' ' {
-		buf, err = delimitedWSRead(vm.Source, buf)
+		buf, err = delimitedWSRead(vm, buf)
 	} else {
-		buf, err = delimitedRead(vm.Source, delim, buf)
+		buf, err = delimitedRead(vm, delim, buf)
 	}
 	vm.Push(string(buf))
 	return err
@@ -127,7 +126,7 @@ func skip(vm *VM) error {
 
 // escapedRead reads from the `source` until the delimiter (a rune) is found,
 // processing escape sequences along the way.
-func escapedRead(source *bufio.Reader, delim rune, buf []rune) ([]rune, error) {
+func escapedRead(source io.RuneReader, delim rune, buf []rune) ([]rune, error) {
 	var (
 		ch  rune
 		err error
@@ -179,7 +178,7 @@ func escapedRead(source *bufio.Reader, delim rune, buf []rune) ([]rune, error) {
 
 // : " 34 read (compiling?) if postpone literal then ; immediate
 func openQuote(vm *VM) error {
-	buf, err := escapedRead(vm.Source, '"', nil)
+	buf, err := escapedRead(vm, '"', nil)
 	if err != nil {
 		return err
 	}
@@ -207,7 +206,7 @@ func chrFromInt(vm *VM) error {
 	return nil
 }
 
-// ordFromStr ('ord') takes a one-character string and gives its rune
+// ordFromStr ('ord') takes the first character of a string and gives its rune
 // value as an int. It is the inverse of 'chr'.
 func ordFromStr(vm *VM) error {
 	value, err := vm.Pop()
@@ -218,11 +217,12 @@ func ordFromStr(vm *VM) error {
 	if !ok {
 		return ErrArgumentMsg("ord requires a string")
 	}
-	r, sz := utf8.DecodeRuneInString(chStr)
-	// it needs to be a one-char string
-	if sz != len(chStr) {
-		return ErrArgumentMsg("ord requires a single-character string")
+
+	if len(chStr) == 0 {
+		return ErrArgumentMsg("ord requires a non-empty string")
 	}
+
+	r, _ := utf8.DecodeRuneInString(chStr)
 	vm.Push(int(r))
 
 	return nil

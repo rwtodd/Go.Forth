@@ -64,12 +64,12 @@ func TestGarbageWordDetected(t *testing.T) {
 func TestRecursionNoLocals(t *testing.T) {
 	// Verify that returning from a recursive call doesn't break anything.
 	// We need to capture stdout to verify the output.
-	vm.ResetState()
+	vm.ClearResetState()
 	mark(vm)
 	code := `[ dup 0= IF . " DONE!" type cr ELSE dup 1 - RECUR " WAS" . . cr THEN ]  4 swap execute`
 
 	var buf stdbytes.Buffer
-	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -83,12 +83,12 @@ func TestRecursionNoLocals(t *testing.T) {
 func TestRecursionLocalsAccess(t *testing.T) {
 	// Verify that we can access locals after returning from a recursive call
 	// We need to capture stdout to verify the output.
-	vm.ResetState()
+	vm.ClearResetState()
 	mark(vm)
 	code := `[ (| n |) n 0= IF n . " DONE!" type cr ELSE n 1 - RECUR " WAS" . n . cr THEN ] 4 swap execute`
 
 	var buf stdbytes.Buffer
-	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -107,7 +107,7 @@ func TestTopLevelQuotation(t *testing.T) {
 func TestLocalsAfterRecur(t *testing.T) {
 	// Verify that recur works even if locals are defined AFTER the recur call
 	// in the source text.
-	vm.ResetState()
+	vm.ClearResetState()
 	mark(vm)
 	// Factorial using recursion, but locals defined at the end.
 	// [ dup 0 > IF dup 1 - recur * ELSE drop 1 THEN (| | temp ) ]
@@ -115,7 +115,7 @@ func TestLocalsAfterRecur(t *testing.T) {
 
 	var buf stdbytes.Buffer
 	// We expect 120 on stack, no output.
-	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -130,14 +130,14 @@ func TestLocalsAfterRecur(t *testing.T) {
 
 func TestTailCallLocalsAfter(t *testing.T) {
 	// Verify that tail-call works even if locals are defined AFTER the call
-	vm.ResetState()
+	vm.ClearResetState()
 	mark(vm)
 	// [ dup 0 > IF 1 - (tail-call) ELSE THEN (| | n ) ]
 	// This captures the tail-call scenario with late locals.
 	code := `[ dup 0 > IF 1 - (tail-call) ELSE THEN (| | n ) ] 5 swap execute`
 
 	var buf stdbytes.Buffer
-	if err := vm.Run(strings.NewReader(code), &buf); err != nil {
+	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 

@@ -17,12 +17,12 @@ var vm = NewVM()
 func tstRunForth(t *testing.T, name string, code string, vals ...any) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {
-		vm.ResetState()
+		vm.ClearResetState()
 		if markerr := mark(vm); markerr != nil {
 			t.Errorf("Unexpected error: %v", markerr)
 		}
 		tprog := strings.NewReader(code)
-		if err := vm.Run(tprog, io.Discard); err != nil {
+		if err := vm.RunFromSource(tprog, "test", io.Discard); err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
 		if !stackEq(vals...) {
@@ -39,12 +39,12 @@ func tstRunForth(t *testing.T, name string, code string, vals ...any) {
 func tstRunForthErr(t *testing.T, name string, code string, expectedErr error, vals ...any) {
 	t.Helper()
 	t.Run(name, func(t *testing.T) {
-		vm.ResetState()
+		vm.ClearResetState()
 		tprog := strings.NewReader(code)
 		if markerr := mark(vm); markerr != nil {
 			t.Errorf("Unexpected error: %v", markerr)
 		}
-		if err := vm.Run(tprog, io.Discard); !errors.Is(err, expectedErr) {
+		if err := vm.RunFromSource(tprog, "test", io.Discard); !errors.Is(err, expectedErr) {
 			t.Errorf("Error mismatch. Expected: %v, Got: %v", expectedErr, err)
 		}
 		if !stackEq(vals...) {

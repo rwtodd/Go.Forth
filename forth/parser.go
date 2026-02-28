@@ -5,7 +5,9 @@ package forth
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -56,13 +58,13 @@ func nlComment(vm *VM) error {
 }
 
 func nextToken(vm *VM, buf []rune) (string, error) {
-	ch, err := eatWhitespace(vm.Source)
+	ch, err := eatWhitespace(vm)
 	if err != nil {
 		return "", err
 	}
 
 	buf = append(buf, ch)
-	if buf, err = delimitedWSRead(vm.Source, buf); err == nil {
+	if buf, err = delimitedWSRead(vm, buf); err == nil {
 		// convert the buffer to lowercase
 		for i, r := range buf {
 			buf[i] = unicode.ToLower(r)
@@ -101,14 +103,14 @@ func stopInterpret(vm *VM) error {
 }
 
 func interpret(vm *VM) (err error) {
-	// If we are called recursively from compile (via [ ... ]), that's fine.
-	// We just loop until we hit ] or EOF.
-
-	// In original code:
-	// if !vm.Compiling { return ErrBadStateMsg(...) }
-	// vm.Compiling = false
-
-	// Here, we just run the loop. The "mode switch" is implicit by running this function.
+	// If we entered interpret from compile, suspend the compilation context
+	if len(vm.CompStack) > 0 {
+		ctx := &vm.CompStack[len(vm.CompStack)-1]
+		if !ctx.Suspended {
+			ctx.Suspended = true
+			defer func() { ctx.Suspended = false }()
+		}
+	}
 
 	buf := make([]rune, 0, 20)
 
@@ -125,16 +127,7 @@ func interpret(vm *VM) (err error) {
 		// lookup the string in the dictionary
 		if idx, ok := vm.dict[str]; ok {
 			if vm.words[idx].Name() == "]]" {
-				// Return to compilation if we are compiling
-				if vm.CurrentCompCtx() != nil {
-					return nil
-				}
-				// If not compiling, ]] is an error or no-op?
-				// In standard forth ] enters compilation.
-				// But our ]] says "stopInterpret".
-				// Let's assume for now it just breaks the loop if we were inside [[ ... ]]
-				// If we are top level, it might be an error.
-				// For now, let's return and let caller decide.
+				// done interpreting!
 				return nil
 			}
 			err = vm.words[idx].Run(vm)
@@ -373,7 +366,7 @@ func compileLoop(vm *VM) error {
 // the definition until ';' tells it to stop
 func compile(vm *VM) (err error) {
 	if vm.CurrentCompCtx() != nil {
-		return ErrBadStateMsg("already compiling (compile called in compiler mode)")
+		return vm.wrapError(ErrBadStateMsg("cannot define a word while already compiling"))
 	}
 
 	buf := make([]rune, 0, 20)
@@ -743,6 +736,45 @@ func bracketTick(vm *VM) error {
 	return nil
 }
 
+func evalRun(vm *VM) error {
+	if vm.CurrentCompCtx() != nil {
+		return vm.wrapError(ErrBadStateMsg("cannot eval while compiling"))
+	}
+	strVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	str, ok := strVal.(string)
+	if !ok {
+		return vm.wrapError(ErrArgumentMsg("eval requires a string argument"))
+	}
+
+	vm.PushSource(strings.NewReader(str), "eval string")
+	return nil
+}
+
+func loadRun(vm *VM) error {
+	if vm.CurrentCompCtx() != nil {
+		return vm.wrapError(ErrBadStateMsg("cannot load while compiling"))
+	}
+	fileVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	filename, ok := fileVal.(string)
+	if !ok {
+		return vm.wrapError(ErrArgumentMsg("load requires a string filename"))
+	}
+
+	importFile, err := os.Open(filename)
+	if err != nil {
+		return vm.wrapError(fmt.Errorf("failed to load %s: %w", filename, err))
+	}
+
+	vm.PushSource(importFile, filename)
+	return nil
+}
+
 func parseWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "\\", run: nlComment, immediate: true})
 	vm.Define(&NativeWord{name: "(", run: parenComment, immediate: true})
@@ -758,4 +790,6 @@ func parseWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "(|", run: compileLocals, immediate: true})
 	vm.Define(&NativeWord{name: "[", run: quotationStart, immediate: true})
 	vm.Define(&NativeWord{name: "]", run: quotationEnd, immediate: true})
+	vm.Define(&NativeWord{name: "eval", run: evalRun, immediate: true})
+	vm.Define(&NativeWord{name: "load", run: loadRun, immediate: true})
 }

@@ -407,10 +407,10 @@ func varLenQuote(vm *VM) error {
 	count := 0
 	for {
 		// 1. Eat whitespace to start next token
-		ch, err := eatWhitespace(vm.Source)
+		ch, err := eatWhitespace(vm)
 		if err != nil {
 			if err == io.EOF {
-				return ErrArgumentMsg("unexpected EOF inside <<\" ... >>")
+				return ErrArgumentMsg("unexpected EOF inside <<\" ... \">>")
 			}
 			return err
 		}
@@ -420,7 +420,7 @@ func varLenQuote(vm *VM) error {
 		buf = buf[:0]
 		buf = append(buf, ch)
 		// Read subsequent chars
-		buf, err = delimitedWSRead(vm.Source, buf)
+		buf, err = delimitedWSRead(vm, buf)
 		if err != nil && err != io.EOF {
 			return err
 		}
