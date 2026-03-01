@@ -205,6 +205,18 @@ func stopCompile(vm *VM) error {
 		vm.codeseg = append(vm.codeseg, opExitScope)
 	}
 
+	epilogueTarget := len(vm.codeseg)
+	shift := 0
+	if numLocals > 0 {
+		epilogueTarget = len(vm.codeseg) - 1
+		shift = 2
+	}
+	for _, ip := range ctx.ExitFixups {
+		realIP := ip + shift
+		offset := epilogueTarget - realIP - 1
+		vm.codeseg[realIP+1] = uint16(offset)
+	}
+
 	// We pop the context BEFORE finishing, or effectively we are done compiling THIS word.
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
@@ -459,7 +471,18 @@ func quotationEnd(vm *VM) error {
 
 	// FIXUPS!
 	// Now we know if we have locals, and where the code starts.
-	// We need to fixup all RECUR and TAIL-CALL placeholders.
+	// We need to fixup all RECUR, TAIL-CALL, and EXIT placeholders.
+
+	// Fixup EXIT
+	epilogueTarget := len(vm.codeseg)
+	if hasLocals {
+		epilogueTarget = len(vm.codeseg) - 1
+	}
+	for _, ip := range ctx.ExitFixups {
+		realIP := ip + shift
+		offset := epilogueTarget - realIP - 1
+		vm.codeseg[realIP+1] = uint16(offset)
+	}
 
 	// Fixup RECUR
 	for _, ip := range ctx.RecurFixups {

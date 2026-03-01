@@ -14,6 +14,13 @@ func TestLocalsBasic(t *testing.T) {
 	tstRunForth(t, "Basic Locals Alternate 2", ": add3 (| a b | c ) c! a b c + + ; 1 2 3 add3", 6)
 }
 
+func TestLocalsExit(t *testing.T) {
+	// : test2 300 400 (| c d |)  exit ;
+	// : test1 100 200 (| a b |)  test2  a b ;
+	// test1 -> 100 200
+	tstRunForth(t, "Locals Exit", ": test2 300 400 (| c d |)  exit ; : test1 100 200 (| a b |)  test2  a b ; test1", 100, 200)
+}
+
 func TestLocalsModifying(t *testing.T) {
 	// : inc (| a |) a 1 + a! a ;
 	// 5 inc -> 6

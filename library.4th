@@ -39,3 +39,5 @@
 10 constant NL \ new line
 : \p ( -- ) [[ NL ]] literal read   begin [[ NL ]] literal read " " = if exit then again ;
 
+\ <fold> ( ... n init xt -- ??? ) fold over the n-list with an initial value and an xt to apply
+: <fold> (| xt |) swap 0 DO xt execute LOOP ;

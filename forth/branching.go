@@ -259,10 +259,12 @@ func opLeave(vm *VM) error {
 
 // EXIT ( -- )
 func opExit(vm *VM) error {
-	if vm.CurrentCompCtx() == nil {
+	ctx := vm.CurrentCompCtx()
+	if ctx == nil {
 		return ErrBadStateMsg("EXIT used outside of definition")
 	}
-	vm.codeseg = append(vm.codeseg, opReturn)
+	ctx.ExitFixups = append(ctx.ExitFixups, len(vm.codeseg))
+	vm.codeseg = append(vm.codeseg, opBranch, 0)
 	return nil
 }
 

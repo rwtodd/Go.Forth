@@ -114,6 +114,7 @@ type CompilationCtx struct {
 	IsClosure      bool           // Whether this context is a closure
 	RecurFixups    []int          // IP locations that need recur fixup
 	TailCallFixups []int          // IP locations that need tail-call fixup
+	ExitFixups     []int          // IP locations that need exit fixup
 	Suspended      bool           // true if we are running interpret
 }
 
@@ -291,6 +292,7 @@ func (vm *VM) PushCompCtx(startIP, wordIdx int) {
 		IsClosure:      false,
 		RecurFixups:    make([]int, 0),
 		TailCallFixups: make([]int, 0),
+		ExitFixups:     make([]int, 0),
 		Suspended:      false,
 	})
 }
