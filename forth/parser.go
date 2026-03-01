@@ -209,16 +209,6 @@ func stopCompile(vm *VM) error {
 	vm.codeseg = append(vm.codeseg, opReturn) // put a (RET)
 
 	// create a composite word out of the current definition and finish setting it up
-	// We reserved a slot with a dummy NativeWord (or similar) in compile(), now we replace it?
-	// Actually compile() appended a Word. We need to overwrite it with CompositeWord.
-	// But wait, compile() just appended Word{Name: str}. That was a struct.
-	// Now vm.words is []Word interface.
-	// In compile() we need to append a placeholder.
-	// Here we replace accessing the interface.
-
-	// We need to retrieve the name from the existing word BEFORE overwriting it?
-	// Or we have the name in the context? No, context doesn't have name.
-	// The existing word has the name.
 	name := vm.words[ctx.WordIdx].Name()
 	isImmediate := vm.words[ctx.WordIdx].IsImmediate()
 
@@ -513,18 +503,6 @@ func quotationEnd(vm *VM) error {
 
 		// Tail call is always opBranch
 		vm.codeseg[realIP] = opBranch
-
-		// Calculate offset involves the -1 because branch is relative to instruction?
-		// See branchUnconditional: vm.ip += int(num) -> next instruction is ip+1+num.
-		// We want next instruction to be TargetIP.
-		// TargetIP = (realIP + 1) + 1 + num  (Wait, ip is pointing to opcode?)
-		// When executing branch: ip points to opcode.
-		// num = vm.codeseg[ip+1]
-		// vm.ip += num.
-		// Next loop: vm.ip++ (so effective next is ip + num + 1)
-		// We want effective next to be TargetIP.
-		// TargetIP = ip + num + 1
-		// num = TargetIP - ip - 1
 
 		offset := targetIP - realIP - 1
 		vm.codeseg[realIP+1] = uint16(offset)

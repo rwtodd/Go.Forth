@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/rwtodd/Go.Forth/extensions/random"
 	_ "github.com/rwtodd/Go.Forth/extensions/regex"
+	_ "github.com/rwtodd/Go.Forth/extensions/strings"
 	"github.com/rwtodd/Go.Forth/forth"
 )
 
