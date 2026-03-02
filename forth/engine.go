@@ -87,7 +87,11 @@ func (w *NativeWord) SetImmediate(b bool) {
 }
 
 func (w *NativeWord) Run(vm *VM) error {
-	return w.run(vm)
+	err := w.run(vm)
+	if err != nil {
+		return fmt.Errorf("%w\n at `%s`", err, w.Name())
+	}
+	return nil
 }
 
 func (w *NativeWord) Previous() uint16 {
@@ -145,7 +149,11 @@ func (wt WordToken) Run(vm *VM) error {
 	if int(wt.Token) >= len(vm.words) {
 		return ErrArgumentMsg("invalid word index in token")
 	}
-	return vm.words[wt.Token].Run(vm)
+	err := vm.words[wt.Token].Run(vm)
+	if err != nil {
+		return fmt.Errorf("%w\n at `%s`", err, wt.Name())
+	}
+	return nil
 }
 
 func (wt WordToken) Compile(vm *VM) error {
@@ -171,7 +179,10 @@ func (c Closure) Run(vm *VM) error {
 	vm.HeadScope = c.Env // Restore captured environment
 	err := vm.RunAt(c.StartIP)
 	vm.HeadScope = oldHead // Restore previous environment
-	return err
+	if err != nil {
+		return fmt.Errorf("%w\n at `%s`", err, c.Name())
+	}
+	return nil
 }
 
 func (c Closure) Compile(vm *VM) error {
@@ -237,7 +248,10 @@ func (w *VariableWord) SetPrevious(idx uint16) {
 func (w *VariableWord) Run(vm *VM) error {
 	vm.Push(w.val)
 	if w.xt != nil {
-		return w.xt.Run(vm)
+		err := w.xt.Run(vm)
+		if err != nil {
+			return fmt.Errorf("%w\n at `%s`", err, w.Name())
+		}
 	}
 	return nil
 }

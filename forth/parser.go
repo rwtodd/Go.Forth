@@ -41,7 +41,11 @@ func (c *CompositeWord) SetPrevious(idx uint16) {
 
 // Run on a composite word:
 func (c *CompositeWord) Run(vm *VM) error {
-	return vm.RunAt(c.start)
+	err := vm.RunAt(c.start)
+	if err != nil {
+		return fmt.Errorf("%w\n at `%s`", err, c.Name())
+	}
+	return nil
 }
 
 // : ( ')' skip ; immediate
@@ -131,6 +135,20 @@ func interpret(vm *VM) (err error) {
 				return nil
 			}
 			err = vm.words[idx].Run(vm)
+			if err != nil {
+				ctxName := "unknown"
+				if len(vm.sourceStack) > 0 {
+					ctxName = vm.sourceStack[len(vm.sourceStack)-1].context
+				}
+
+				lastWordInfo := ""
+				if len(vm.words) > 0 {
+					last := vm.words[len(vm.words)-1]
+					lastWordInfo = fmt.Sprintf("\n(Last defined word was `%s`)", last.Name())
+				}
+
+				return fmt.Errorf("%w\n in %s%s", err, ctxName, lastWordInfo)
+			}
 		} else {
 			// if it's not in the dict, put it on the stack as a literal
 			var lit any
