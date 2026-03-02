@@ -160,7 +160,7 @@ func tailCall(vm *VM) (err error) {
 // prior to the loop proper. Then, at the start of the loop, it needs to
 // test whether iteration should continue, or jump to the end
 // of the loop:
-// >r >r (test loop-body back-facing branch) rdrop rdrop
+// >r >r (test loop-body back-facing branch) (teardownLoop)
 func opDo(vm *VM) (err error) {
 	opSetup := vm.dict["(setupDo)"]
 	opTest := vm.dict["(testDo)"]
@@ -190,7 +190,7 @@ func opLoopPlus(vm *VM) error {
 func opLoopInternal(vm *VM, pullVal bool) (err error) {
 	opLoopPlus := vm.dict["(perfLoopPlus)"]
 	opRAt := vm.dict["r@"]
-	opRDrop := vm.dict["rdrop"]
+	opTeardownLoop := vm.dict["(teardownLoop)"]
 
 	var loopCtx any
 	loopCtx, err = vm.Pop()
@@ -232,7 +232,7 @@ func opLoopInternal(vm *VM, pullVal bool) (err error) {
 
 	vm.codeseg = append(vm.codeseg, opLoopPlus,
 		opBranch, uint16(distToStart),
-		opRDrop, opRDrop, opRDrop)
+		opTeardownLoop)
 	return
 }
 
@@ -290,6 +290,17 @@ func performLoopPlus(vm *VM) (err error) {
 		err = ErrBadState
 	}
 	return
+}
+
+// (teardownLoop) drops the loop parameters from the R-stack
+func teardownLoop(vm *VM) error {
+	rtop := len(vm.Rstack) - 3
+	if rtop < 0 {
+		return ErrUnderflowMsg("teardownLoop: R-stack underflow")
+	}
+	clear(vm.Rstack[rtop:])
+	vm.Rstack = vm.Rstack[:rtop]
+	return nil
 }
 
 // setupDo sets up a DO loop by pushing limit and start index to rstack and determining loop direction
@@ -382,6 +393,7 @@ func branchWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "do", run: opDo, immediate: true})
 	vm.Define(&NativeWord{name: "(setupDo)", run: setupDo, immediate: false})
 	vm.Define(&NativeWord{name: "(testDo)", run: testDo, immediate: false})
+	vm.Define(&NativeWord{name: "(teardownLoop)", run: teardownLoop, immediate: false})
 	vm.Define(&NativeWord{name: "(perfLoopPlus)", run: performLoopPlus, immediate: false})
 	vm.Define(&NativeWord{name: "loop", run: opLoop, immediate: true})
 	vm.Define(&NativeWord{name: "+loop", run: opLoopPlus, immediate: true})
