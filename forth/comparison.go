@@ -3,12 +3,12 @@
 package forth
 
 const (
-	forthTrue  = -1
-	forthFalse = 0
+	forthTrue  int64 = -1
+	forthFalse int64 = 0
 )
 
 // BoolToForth converts a Go bool to a Forth boolean int
-func BoolToForth(b bool) int {
+func BoolToForth(b bool) int64 {
 	if b {
 		return forthTrue
 	}
@@ -28,9 +28,9 @@ func equal(vm *VM) error {
 
 	res := false
 	switch v1 := val1.(type) {
-	case int:
+	case int64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 == v2)
 		case float64:
 			res = (float64(v1) == v2)
@@ -39,7 +39,7 @@ func equal(vm *VM) error {
 		}
 	case float64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 == float64(v2))
 		case float64:
 			res = (v1 == v2)
@@ -72,9 +72,9 @@ func lessThan(vm *VM) error {
 
 	res := false
 	switch v1 := val1.(type) {
-	case int:
+	case int64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 < v2)
 		case float64:
 			res = (float64(v1) < v2)
@@ -83,7 +83,7 @@ func lessThan(vm *VM) error {
 		}
 	case float64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 < float64(v2))
 		case float64:
 			res = (v1 < v2)
@@ -116,9 +116,9 @@ func greaterThan(vm *VM) error {
 
 	res := false
 	switch v1 := val1.(type) {
-	case int:
+	case int64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 > v2)
 		case float64:
 			res = (float64(v1) > v2)
@@ -127,7 +127,7 @@ func greaterThan(vm *VM) error {
 		}
 	case float64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 > float64(v2))
 		case float64:
 			res = (v1 > v2)
@@ -160,9 +160,9 @@ func lessThanOrEqual(vm *VM) error {
 
 	res := false
 	switch v1 := val1.(type) {
-	case int:
+	case int64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 <= v2)
 		case float64:
 			res = (float64(v1) <= v2)
@@ -171,7 +171,7 @@ func lessThanOrEqual(vm *VM) error {
 		}
 	case float64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 <= float64(v2))
 		case float64:
 			res = (v1 <= v2)
@@ -204,9 +204,9 @@ func greaterThanOrEqual(vm *VM) error {
 
 	res := false
 	switch v1 := val1.(type) {
-	case int:
+	case int64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 >= v2)
 		case float64:
 			res = (float64(v1) >= v2)
@@ -215,7 +215,7 @@ func greaterThanOrEqual(vm *VM) error {
 		}
 	case float64:
 		switch v2 := val2.(type) {
-		case int:
+		case int64:
 			res = (v1 >= float64(v2))
 		case float64:
 			res = (v1 >= v2)
@@ -242,7 +242,7 @@ func notEqual(vm *VM) error {
 	}
 	// logical invert the result
 	val, _ := vm.Pop() // error checked in equal
-	if val.(int) == forthFalse {
+	if val.(int64) == forthFalse {
 		vm.Push(forthTrue)
 	} else {
 		vm.Push(forthFalse)
@@ -259,7 +259,7 @@ func zeroEqual(vm *VM) error {
 
 	res := false
 	switch v := val.(type) {
-	case int:
+	case int64:
 		res = (v == 0)
 	case float64:
 		res = (v == 0.0)
@@ -279,7 +279,7 @@ func zeroLessThan(vm *VM) error {
 
 	res := false
 	switch v := val.(type) {
-	case int:
+	case int64:
 		res = (v < 0)
 	case float64:
 		res = (v < 0.0)
@@ -299,7 +299,7 @@ func zeroGreaterThan(vm *VM) error {
 
 	res := false
 	switch v := val.(type) {
-	case int:
+	case int64:
 		res = (v > 0)
 	case float64:
 		res = (v > 0.0)
@@ -321,8 +321,8 @@ func andOp(vm *VM) error {
 		return err
 	}
 
-	v1, ok1 := val1.(int)
-	v2, ok2 := val2.(int)
+	v1, ok1 := val1.(int64)
+	v2, ok2 := val2.(int64)
 	if !ok1 || !ok2 {
 		return ErrArgumentMsg("and requires two integers")
 	}
@@ -342,8 +342,8 @@ func orOp(vm *VM) error {
 		return err
 	}
 
-	v1, ok1 := val1.(int)
-	v2, ok2 := val2.(int)
+	v1, ok1 := val1.(int64)
+	v2, ok2 := val2.(int64)
 	if !ok1 || !ok2 {
 		return ErrArgumentMsg("or requires two integers")
 	}
@@ -363,8 +363,8 @@ func xorOp(vm *VM) error {
 		return err
 	}
 
-	v1, ok1 := val1.(int)
-	v2, ok2 := val2.(int)
+	v1, ok1 := val1.(int64)
+	v2, ok2 := val2.(int64)
 	if !ok1 || !ok2 {
 		return ErrArgumentMsg("xor requires two integers")
 	}
@@ -380,7 +380,7 @@ func invertOp(vm *VM) error {
 		return err
 	}
 
-	v, ok := val.(int)
+	v, ok := val.(int64)
 	if !ok {
 		return ErrArgumentMsg("invert requires an integer")
 	}

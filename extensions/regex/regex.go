@@ -39,9 +39,9 @@ func match(vm *forth.VM) error {
 	}
 
 	if matched {
-		vm.Push(-1) // True in Forth
+		vm.Push(int64(-1)) // True in Forth
 	} else {
-		vm.Push(0) // False in Forth
+		vm.Push(int64(0)) // False in Forth
 	}
 	return nil
 }

@@ -81,19 +81,19 @@ func TestTan(t *testing.T) {
 }
 
 func TestRound(t *testing.T) {
-	tstRunForth(t, "RoundUp", `3.7 round`, 4.0)
-	tstRunForth(t, "RoundDown", `3.2 round`, 3.0)
-	tstRunForth(t, "RoundEq", `3 round`, 3.0)
+	tstRunForth(t, "RoundUp", `3.7 round`, 4)
+	tstRunForth(t, "RoundDown", `3.2 round`, 3)
+	tstRunForth(t, "RoundEq", `3 round`, 3)
 }
 
 func TestFloor(t *testing.T) {
-	tstRunForth(t, "FloorUp", `3.7 floor`, 3.0)
-	tstRunForth(t, "FloorDown", `3.2 floor`, 3.0)
-	tstRunForth(t, "FloorEq", `3 floor`, 3.0)
+	tstRunForth(t, "FloorUp", `3.7 floor`, 3)
+	tstRunForth(t, "FloorDown", `3.2 floor`, 3)
+	tstRunForth(t, "FloorEq", `3 floor`, 3)
 }
 
 func TestCeil(t *testing.T) {
-	tstRunForth(t, "CeilUp", `3.7 ceil`, 4.0)
-	tstRunForth(t, "CeilDown", `3.2 ceil`, 4.0)
-	tstRunForth(t, "CeilEq", `3 ceil`, 3.0)
+	tstRunForth(t, "CeilUp", `3.7 ceil`, 4)
+	tstRunForth(t, "CeilDown", `3.2 ceil`, 4)
+	tstRunForth(t, "CeilEq", `3 ceil`, 3)
 }

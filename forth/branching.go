@@ -11,7 +11,7 @@ const (
 
 type LoopCtx struct {
 	StartIP   int
-	BreakOps  []int
+	BreakOps  []int64
 	Type      LoopType
 	DoFixupIP int // for DO loops, the initial jump
 }
@@ -46,7 +46,7 @@ func branchUnconditional(vm *VM) (err error) {
 func branchZero(vm *VM) (err error) {
 	var tos interface{}
 	tos, err = vm.Pop()
-	bval, ok := tos.(int)
+	bval, ok := tos.(int64)
 	if ok && bval == 0 {
 		err = branchUnconditional(vm)
 	} else {
@@ -226,7 +226,7 @@ func opLoopInternal(vm *VM, pullVal bool) (err error) {
 
 		targetIdx := len(vm.codeseg) + 3
 
-		offset := targetIdx - breakIP
+		offset := int64(targetIdx) - breakIP
 		vm.codeseg[breakIP] = uint16(offset)
 	}
 
@@ -253,7 +253,7 @@ func opLeave(vm *VM) error {
 	}
 
 	vm.codeseg = append(vm.codeseg, opBranch, 0)
-	ctx.BreakOps = append(ctx.BreakOps, len(vm.codeseg)-1)
+	ctx.BreakOps = append(ctx.BreakOps, int64(len(vm.codeseg)-1))
 	return nil
 }
 
@@ -275,7 +275,7 @@ func performLoopPlus(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	ridx := vm.Rstack[rtop-2]
-	iidx, ok := ridx.(int)
+	iidx, ok := ridx.(int64)
 
 	var amt interface{}
 	amt, err = vm.Pop()
@@ -283,7 +283,7 @@ func performLoopPlus(vm *VM) (err error) {
 		return err
 	}
 
-	iamt, ok2 := amt.(int)
+	iamt, ok2 := amt.(int64)
 	if ok && ok2 {
 		vm.Rstack[rtop-2] = (iamt + iidx)
 	} else {
@@ -315,16 +315,16 @@ func setupDo(vm *VM) (err error) {
 	}
 	rtop := len(vm.Rstack) - 1
 	rlim, ridx := vm.Rstack[rtop], vm.Rstack[rtop-1]
-	limval, ok1 := rlim.(int)
-	ival, ok2 := ridx.(int)
+	limval, ok1 := rlim.(int64)
+	ival, ok2 := ridx.(int64)
 	if ok1 && ok2 {
 		switch {
 		case limval > ival:
-			vm.RPush(1)
+			vm.RPush(int64(1))
 		case limval < ival:
-			vm.RPush(-1)
+			vm.RPush(int64(-1))
 		default:
-			vm.RPush(0)
+			vm.RPush(int64(0))
 		}
 	} else {
 		err = ErrBadState
@@ -339,9 +339,9 @@ func testDo(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	rtest, rlim, ridx := vm.Rstack[rtop], vm.Rstack[rtop-1], vm.Rstack[rtop-2]
-	testval, ok1 := rtest.(int)
-	limval, ok2 := rlim.(int)
-	ival, ok3 := ridx.(int)
+	testval, ok1 := rtest.(int64)
+	limval, ok2 := rlim.(int64)
+	ival, ok3 := ridx.(int64)
 	// fmt.Printf("rtop: %v  test: %v   limit: %v   idx: %v\n", rtop, testval, limval, ival)
 	noloop := true
 	if ok1 && ok2 && ok3 {
@@ -413,7 +413,7 @@ func opBegin(vm *VM) (err error) {
 	vm.Push(&LoopCtx{
 		StartIP:  len(vm.codeseg),
 		Type:     LoopBegin,
-		BreakOps: make([]int, 0),
+		BreakOps: make([]int64, 0),
 	})
 	return
 }
@@ -422,7 +422,7 @@ func opBegin(vm *VM) (err error) {
 func resolveBreaks(vm *VM, ctx *LoopCtx) {
 	targetIdx := len(vm.codeseg)
 	for _, breakIP := range ctx.BreakOps {
-		offset := targetIdx - breakIP
+		offset := int64(targetIdx) - breakIP
 		vm.codeseg[breakIP] = uint16(offset)
 	}
 }
@@ -484,7 +484,7 @@ func opWhile(vm *VM) (err error) {
 	// Branch if Zero (false) to exit
 	// Append dummy offset, to be fixed by REPEAT/AGAIN/UNTIL
 	vm.codeseg = append(vm.codeseg, opBZR, 0)
-	ctx.BreakOps = append(ctx.BreakOps, len(vm.codeseg)-1)
+	ctx.BreakOps = append(ctx.BreakOps, int64(len(vm.codeseg)-1))
 	return
 }
 

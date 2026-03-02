@@ -54,7 +54,7 @@ func TestLiteralOptimization(t *testing.T) {
 	// Verify 100000 is in literals
 	foundLargeInt := false
 	for _, lit := range vm.literals {
-		if i, ok := lit.(int); ok && i == 100000 {
+		if i, ok := lit.(int64); ok && i == 100000 {
 			foundLargeInt = true
 			break
 		}

@@ -32,7 +32,7 @@ func TestStringsExtension(t *testing.T) {
 				if expectedBool {
 					expectedInt = -1
 				}
-				if valInt, ok := val.(int); !ok || valInt != expectedInt {
+				if valInt, ok := val.(int64); !ok || valInt != int64(expectedInt) {
 					t.Errorf("expected bool %v (forth %d), got %v", expectedBool, expectedInt, val)
 				}
 			} else if expSlice, ok := expected.([]string); ok {
@@ -41,7 +41,11 @@ func TestStringsExtension(t *testing.T) {
 					t.Errorf("expected slice %v, got %v", expSlice, val)
 				}
 			} else {
-				if val != expected {
+				expectedAny := expected
+				if e, ok := expected.(int); ok {
+					expectedAny = int64(e)
+				}
+				if val != expectedAny {
 					t.Errorf("expected %v, got %v", expected, val)
 				}
 			}

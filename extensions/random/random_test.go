@@ -24,7 +24,7 @@ func TestRandomExtension(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected value on stack")
 		}
-		if n, ok := val.(int); !ok || n < 4 || n >= 10 {
+		if n, ok := val.(int64); !ok || n < 4 || n >= 10 {
 			t.Errorf("expected int in [4, 10), got %v", val)
 		}
 	})
@@ -75,7 +75,7 @@ func TestRandomExtension(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected value on stack")
 		}
-		n, ok := val.(int)
+		n, ok := val.(int64)
 		if !ok || (n != 10 && n != 20 && n != 30) {
 			t.Errorf("expected 10, 20, or 30 from array, got %v", val)
 		}
@@ -92,7 +92,7 @@ func TestRandomExtension(t *testing.T) {
 			t.Fatalf("reading shuffled array failed: %v", err)
 		}
 		sum, _ := vm.Pop()
-		if sum != 60 {
+		if sum != int64(60) {
 			t.Errorf("expected sum to be 60, got %v", sum)
 		}
 	})

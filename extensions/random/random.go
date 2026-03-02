@@ -31,8 +31,8 @@ func randint(vm *forth.VM) error {
 		return err
 	}
 
-	min, ok1 := minVal.(int)
-	max, ok2 := maxVal.(int)
+	min, ok1 := minVal.(int64)
+	max, ok2 := maxVal.(int64)
 	if !ok1 || !ok2 {
 		return forth.ErrArgumentMsg("randint requires integer arguments")
 	}
@@ -40,7 +40,7 @@ func randint(vm *forth.VM) error {
 		return forth.ErrArgumentMsg("randint requires max > min")
 	}
 
-	n := rng.IntN(max-min) + min
+	n := int64(rng.IntN(int(max-min))) + min
 	vm.Push(n)
 	return nil
 }
@@ -57,7 +57,7 @@ func seedWord(vm *forth.VM) error {
 	if err != nil {
 		return err
 	}
-	seed, ok := seedVal.(int)
+	seed, ok := seedVal.(int64)
 	if !ok {
 		return forth.ErrArgumentMsg("@seed requires an integer argument")
 	}
@@ -88,7 +88,7 @@ func arrayShuffle(vm *forth.VM) error {
 	switch a := slice.(type) {
 	case []byte:
 		rng.Shuffle(len(a), func(i, j int) { a[i], a[j] = a[j], a[i] })
-	case []int:
+	case []int64:
 		rng.Shuffle(len(a), func(i, j int) { a[i], a[j] = a[j], a[i] })
 	case []float64:
 		rng.Shuffle(len(a), func(i, j int) { a[i], a[j] = a[j], a[i] })
@@ -119,8 +119,8 @@ func arraySelect(vm *forth.VM) error {
 		if len(a) == 0 {
 			return forth.ErrArgumentMsg("@select from empty array")
 		}
-		vm.Push(int(a[rng.IntN(len(a))]))
-	case []int:
+		vm.Push(int64(a[rng.IntN(len(a))]))
+	case []int64:
 		if len(a) == 0 {
 			return forth.ErrArgumentMsg("@select from empty array")
 		}

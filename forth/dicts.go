@@ -155,9 +155,9 @@ func dictGetQuery(vm *VM) error {
 	}
 	if val, found := d.m[k]; found {
 		vm.Push(val)
-		vm.Push(-1)
+		vm.Push(int64(-1))
 	} else {
-		vm.Push(0)
+		vm.Push(int64(0))
 	}
 	return nil
 }

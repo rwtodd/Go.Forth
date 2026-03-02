@@ -64,7 +64,11 @@ func stackEq(vals ...any) bool {
 	}
 
 	for i := range vals {
-		if vals[i] != vm.Stack[i] {
+		expected := vals[i]
+		if e, ok := expected.(int); ok {
+			expected = int64(e)
+		}
+		if expected != vm.Stack[i] {
 			return false
 		}
 	}

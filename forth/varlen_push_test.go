@@ -65,7 +65,7 @@ func TestVariableVPush(t *testing.T) {
 	tstRunForth(t, "VarVPushVal", `0 variable v 0 ints v ! v << 10 20 >> <@push> drop v 1 @`, 20)
 
 	// 3. Stack effect: v << ... >> <@push> -> return var
-	// In the test: "variable v" pushes *Variable. "0 ints v !" stores []int{} in it.
+	// In the test: "variable v" pushes *Variable. "0 ints v !" stores []int64{} in it.
 	// "v << 99 >> <@push>" pushes *Variable (same one).
 	// "v @" gets the slice? No, "v" pushes var address.
 	// Wait, "v @len". "arrayLen" handles *Variable by getting value.
@@ -94,4 +94,21 @@ func TestVMakeMixed(t *testing.T) {
 
 	// Test VMakeAny with variable push (append mixed types)
 	tstRunForth(t, "VPushAnyVar", `0 variable v 0 things v ! v << " foo" 42 >> <@push> drop v 1 @ v 0 @`, 42, "foo")
+}
+
+func TestSpread(t *testing.T) {
+	// 1. Spread an int slice
+	tstRunForth(t, "SpreadInts", `<< 10 20 >> <ints> @spread`, 10, 20, 2)
+
+	// 2. Spread a float slice
+	tstRunForth(t, "SpreadFloats", `<< 1.5 2.5 >> <floats> @spread`, 1.5, 2.5, 2)
+
+	// 3. Spread a string slice
+	tstRunForth(t, "SpreadStrings", `<<" foo bar ">> <strings> @spread`, "foo", "bar", 2)
+
+	// 4. Spread a byte slice
+	tstRunForth(t, "SpreadBytes", `<< 65 66 >> <bytes> @spread`, 65, 66, 2)
+
+	// 5. Spread a things slice
+	tstRunForth(t, "SpreadThings", `<< 1 " hi" 3.14 >> <things> @spread`, 1, "hi", 3.14, 3)
 }

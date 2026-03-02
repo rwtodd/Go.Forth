@@ -102,14 +102,6 @@ func (w *NativeWord) SetPrevious(idx uint16) {
 	w.prevIdx = idx
 }
 
-// CompositeWord is value-receiver wrapper around a startIP,
-// but to satisfy the interface it might need to be a pointer or struct.
-// Let's make it a struct that implements Word.
-// Note: In parser.go it was just a wrapper struct.
-// We need to define it here or in parser.go. It's better here.
-// But parser.go had CompositeWord.
-// I will move CompositeWord definition here.
-
 // CompilationCtx holds the state for the word currently being defined
 type CompilationCtx struct {
 	StartIP        int            // Instruction pointer where this definition starts
@@ -469,7 +461,7 @@ func variableDoes(vm *VM) error {
 	var xt ExecutionToken
 	if tok, ok := xtVal.(ExecutionToken); ok {
 		xt = tok
-	} else if idx, ok := xtVal.(int); ok {
+	} else if idx, ok := xtVal.(int64); ok {
 		xt = WordToken{Token: uint16(idx)}
 	} else {
 		return ErrArgumentMsg("variable-does expects execution token or word index")
@@ -501,7 +493,7 @@ func parenVariableDoes(vm *VM) error {
 	var xt ExecutionToken
 	if tok, ok := xtVal.(ExecutionToken); ok {
 		xt = tok
-	} else if idx, ok := xtVal.(int); ok {
+	} else if idx, ok := xtVal.(int64); ok {
 		xt = WordToken{Token: uint16(idx)}
 	} else {
 		return ErrArgumentMsg("(variable-does) expects execution token or word index")
@@ -749,14 +741,14 @@ func execute(vm *VM) error {
 	switch v := val.(type) {
 	case ExecutionToken:
 		return v.Run(vm)
-	case int:
+	case int64:
 		// Support legacy int index execution for now? Or convert?
 		// Plan implies full switch. But raw ints might be on stack?
 		// Let's support ints as word indexes for backward comp if needed,
 		// but ideally everything should be Token.
 		// For now, allow int for safety.
 		idx := v
-		if idx < 0 || idx >= len(vm.words) {
+		if idx < 0 || int(idx) >= len(vm.words) {
 			return ErrArgumentMsg("invalid word index")
 		}
 		return vm.words[idx].Run(vm)

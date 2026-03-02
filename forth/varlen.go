@@ -14,23 +14,23 @@ func sprintf(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok {
 		return ErrArgumentMsg("sprintf count must be an integer")
 	}
 
 	currentLen := len(vm.Stack)
-	if currentLen < count+1 {
+	if currentLen < int(count)+1 {
 		return ErrUnderflowMsg("sprintf stack underflow")
 	}
 
 	// 2. Identify args and format
 	// Stack: ... format arg1 ... argN
 	// positions:
-	// format: currentLen - count - 1
-	// args: currentLen - count ... currentLen
+	// format: currentLen - int(count) - 1
+	// args: currentLen - int(count) ... currentLen
 
-	formatIdx := currentLen - count - 1
+	formatIdx := currentLen - int(count) - 1
 	formatVal := vm.Stack[formatIdx]
 	format, ok := formatVal.(string)
 	if !ok {
@@ -58,20 +58,20 @@ func varLenPush(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("<@push> count must be non-negative integer")
 	}
 
 	currentLen := len(vm.Stack)
 	// We need array + count items on stack.
-	if currentLen < count+1 {
+	if currentLen < int(count)+1 {
 		return ErrUnderflowMsg("<@push> stack underflow")
 	}
 
 	// 2. Identify array and items
 	// Stack: ... array item1 ... itemN
-	arrIdx := currentLen - count - 1
+	arrIdx := currentLen - int(count) - 1
 	arrVal := vm.Stack[arrIdx]
 	items := vm.Stack[arrIdx+1:]
 
@@ -83,16 +83,16 @@ func varLenPush(vm *VM) error {
 
 	// 3. Append based on type
 	switch a := arrVal.(type) {
-	case []int:
+	case []int64:
 		for _, item := range items {
 			switch v := item.(type) {
-			case int:
+			case int64:
 				a = append(a, v)
 			case float64:
 				if v != float64(int(v)) {
 					return ErrArgumentMsg("lossy conversion from float to int in <@push>")
 				}
-				a = append(a, int(v))
+				a = append(a, int64(v))
 			default:
 				return ErrArgumentMsg("int array <@push> expects numeric values")
 			}
@@ -108,7 +108,7 @@ func varLenPush(vm *VM) error {
 	case []float64:
 		for _, item := range items {
 			switch v := item.(type) {
-			case int:
+			case int64:
 				a = append(a, float64(v))
 			case float64:
 				a = append(a, v)
@@ -142,7 +142,7 @@ func varLenPush(vm *VM) error {
 		}
 	case []byte:
 		for _, item := range items {
-			v, ok := item.(int)
+			v, ok := item.(int64)
 			if !ok {
 				return ErrArgumentMsg("byte array <@push> expects integer values")
 			}
@@ -173,40 +173,40 @@ func varLenPush(vm *VM) error {
 	return nil
 }
 
-// <ints> ( item1 ... itemN count -- []int )
+// <ints> ( item1 ... itemN count -- []int64 )
 func varLenInts(vm *VM) error {
 	countVal, err := vm.Pop()
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("<ints> count must be non-negative integer")
 	}
 
 	currentLen := len(vm.Stack)
-	if currentLen < count {
+	if currentLen < int(count) {
 		return ErrUnderflowMsg("<ints> stack underflow")
 	}
 
-	items := vm.Stack[currentLen-count:]
-	res := make([]int, 0, count)
+	items := vm.Stack[currentLen-int(count):]
+	res := make([]int64, 0, count)
 
 	for _, item := range items {
 		switch v := item.(type) {
-		case int:
+		case int64:
 			res = append(res, v)
 		case float64:
 			if v != float64(int(v)) {
 				return ErrArgumentMsg("lossy conversion from float to int in <ints>")
 			}
-			res = append(res, int(v))
+			res = append(res, int64(v))
 		default:
 			return ErrArgumentMsg("<ints> expects numeric values")
 		}
 	}
 
-	vm.Stack = vm.Stack[:currentLen-count]
+	vm.Stack = vm.Stack[:currentLen-int(count)]
 	vm.Push(res)
 	return nil
 }
@@ -217,22 +217,22 @@ func varLenFloats(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("<floats> count must be non-negative integer")
 	}
 
 	currentLen := len(vm.Stack)
-	if currentLen < count {
+	if currentLen < int(count) {
 		return ErrUnderflowMsg("<floats> stack underflow")
 	}
 
-	items := vm.Stack[currentLen-count:]
+	items := vm.Stack[currentLen-int(count):]
 	res := make([]float64, 0, count)
 
 	for _, item := range items {
 		switch v := item.(type) {
-		case int:
+		case int64:
 			res = append(res, float64(v))
 		case float64:
 			res = append(res, v)
@@ -241,7 +241,7 @@ func varLenFloats(vm *VM) error {
 		}
 	}
 
-	vm.Stack = vm.Stack[:currentLen-count]
+	vm.Stack = vm.Stack[:currentLen-int(count)]
 	vm.Push(res)
 	return nil
 }
@@ -252,17 +252,17 @@ func varLenStrings(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("<strings> count must be non-negative integer")
 	}
 
 	currentLen := len(vm.Stack)
-	if currentLen < count {
+	if currentLen < int(count) {
 		return ErrUnderflowMsg("<strings> stack underflow")
 	}
 
-	items := vm.Stack[currentLen-count:]
+	items := vm.Stack[currentLen-int(count):]
 	res := make([]string, 0, count)
 
 	for _, item := range items {
@@ -273,7 +273,7 @@ func varLenStrings(vm *VM) error {
 		res = append(res, v)
 	}
 
-	vm.Stack = vm.Stack[:currentLen-count]
+	vm.Stack = vm.Stack[:currentLen-int(count)]
 	vm.Push(res)
 	return nil
 }
@@ -284,28 +284,28 @@ func varLenBytes(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("<bytes> count must be non-negative integer")
 	}
 
 	currentLen := len(vm.Stack)
-	if currentLen < count {
+	if currentLen < int(count) {
 		return ErrUnderflowMsg("<bytes> stack underflow")
 	}
 
-	items := vm.Stack[currentLen-count:]
+	items := vm.Stack[currentLen-int(count):]
 	res := make([]byte, 0, count)
 
 	for _, item := range items {
-		v, ok := item.(int)
+		v, ok := item.(int64)
 		if !ok {
 			return ErrArgumentMsg("<bytes> expects integer values")
 		}
 		res = append(res, byte(v))
 	}
 
-	vm.Stack = vm.Stack[:currentLen-count]
+	vm.Stack = vm.Stack[:currentLen-int(count)]
 	vm.Push(res)
 	return nil
 }
@@ -316,23 +316,63 @@ func varLenAny(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("<things> count must be non-negative integer")
 	}
 
 	currentLen := len(vm.Stack)
-	if currentLen < count {
+	if currentLen < int(count) {
 		return ErrUnderflowMsg("<things> stack underflow")
 	}
 
 	// Copy the slice from stack
-	src := vm.Stack[currentLen-count:]
+	src := vm.Stack[currentLen-int(count):]
 	res := make([]any, count)
 	copy(res, src)
 
-	vm.Stack = vm.Stack[:currentLen-count]
+	vm.Stack = vm.Stack[:currentLen-int(count)]
 	vm.Push(res)
+	return nil
+}
+
+// @spread ( array -- item1 ... itemN count )
+func varLenSpread(vm *VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	switch arr := val.(type) {
+	case []int64:
+		for _, v := range arr {
+			vm.Push(v)
+		}
+		vm.Push(int64(len(arr)))
+	case []float64:
+		for _, v := range arr {
+			vm.Push(v)
+		}
+		vm.Push(int64(len(arr)))
+	case []string:
+		for _, v := range arr {
+			vm.Push(v)
+		}
+		vm.Push(int64(len(arr)))
+	case []byte:
+		for _, v := range arr {
+			vm.Push(int64(v))
+		}
+		vm.Push(int64(len(arr)))
+	case []any:
+		for _, v := range arr {
+			vm.Push(v)
+		}
+		vm.Push(int64(len(arr)))
+	default:
+		return ErrArgumentMsg("@spread expects an array on the stack")
+	}
+
 	return nil
 }
 
@@ -390,8 +430,8 @@ func endVarLen(vm *VM) error {
 		if err != nil {
 			return err
 		}
-		rInt, ok1 := rVal.(int)
-		dInt, ok2 := dVal.(int)
+		rInt, ok1 := rVal.(int64)
+		dInt, ok2 := dVal.(int64)
 		if !ok1 || !ok2 {
 			return ErrBadStateMsg("stack depth calculation failed")
 		}
@@ -444,9 +484,9 @@ func varLenQuote(vm *VM) error {
 	}
 
 	if vm.CurrentCompCtx() != nil {
-		compileLiteral(vm, count)
+		compileLiteral(vm, int64(count))
 	} else {
-		vm.Push(count)
+		vm.Push(int64(count))
 	}
 
 	return nil
@@ -461,6 +501,7 @@ func varLenWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "<strings>", run: varLenStrings, immediate: false})
 	vm.Define(&NativeWord{name: "<bytes>", run: varLenBytes, immediate: false})
 	vm.Define(&NativeWord{name: "<things>", run: varLenAny, immediate: false})
+	vm.Define(&NativeWord{name: "@spread", run: varLenSpread, immediate: false})
 
 	vm.Define(&NativeWord{name: "<<", run: startVarLen, immediate: true})
 	vm.Define(&NativeWord{name: ">>", run: endVarLen, immediate: true})

@@ -43,12 +43,12 @@ func activateExtensions(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	count, ok := countVal.(int)
+	count, ok := countVal.(int64)
 	if !ok || count < 0 {
 		return ErrArgumentMsg("activate-extensions count must be a non-negative integer")
 	}
 
-	if len(vm.Stack) < count {
+	if int64(len(vm.Stack)) < count {
 		return ErrUnderflowMsg("activate-extensions stack underflow")
 	}
 

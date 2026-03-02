@@ -31,9 +31,9 @@ func init() {
 
 func pushBool(vm *forth.VM, b bool) {
 	if b {
-		vm.Push(-1)
+		vm.Push(int64(-1))
 	} else {
-		vm.Push(0)
+		vm.Push(int64(0))
 	}
 }
 
@@ -61,7 +61,7 @@ func strLen(vm *forth.VM) error {
 	if !ok {
 		return forth.ErrArgumentMsg("len\"\" expects a string")
 	}
-	vm.Push(len(s))
+	vm.Push(int64(len(s)))
 	return nil
 }
 
@@ -263,7 +263,7 @@ func stackJoin(vm *forth.VM) error {
 	if err != nil {
 		return err
 	}
-	n, ok := nVal.(int)
+	n, ok := nVal.(int64)
 	if !ok {
 		return forth.ErrArgumentMsg("<join\"\"> expects an integer count n")
 	}
@@ -294,7 +294,7 @@ func substring(vm *forth.VM) error {
 	if err != nil {
 		return err
 	}
-	idx2, ok := idx2Val.(int)
+	idx2, ok := idx2Val.(int64)
 	if !ok {
 		return forth.ErrArgumentMsg("sub\"\" expects integer idx2")
 	}
@@ -303,7 +303,7 @@ func substring(vm *forth.VM) error {
 	if err != nil {
 		return err
 	}
-	idx1, ok := idx1Val.(int)
+	idx1, ok := idx1Val.(int64)
 	if !ok {
 		return forth.ErrArgumentMsg("sub\"\" expects integer idx1")
 	}
@@ -318,28 +318,28 @@ func substring(vm *forth.VM) error {
 	}
 
 	if idx1 != 0 && idx2 == 0 {
-		idx2 = len(s)
+		idx2 = int64(len(s))
 	}
 
 	if idx1 < 0 {
-		idx1 = len(s) + idx1
+		idx1 = int64(len(s)) + idx1
 	}
 	if idx2 < 0 {
-		idx2 = len(s) + idx2
+		idx2 = int64(len(s)) + idx2
 	}
 
 	if idx1 < 0 {
 		idx1 = 0
 	}
-	if idx1 > len(s) {
-		idx1 = len(s)
+	if idx1 > int64(len(s)) {
+		idx1 = int64(len(s))
 	}
 
 	if idx2 < 0 {
 		idx2 = 0
 	}
-	if idx2 > len(s) {
-		idx2 = len(s)
+	if idx2 > int64(len(s)) {
+		idx2 = int64(len(s))
 	}
 
 	if idx1 > idx2 {
@@ -403,7 +403,7 @@ func indexStr(vm *forth.VM) error {
 		return forth.ErrArgumentMsg("index\"\" expects a target string")
 	}
 
-	vm.Push(strings.Index(s, sub))
+	vm.Push(int64(strings.Index(s, sub)))
 	return nil
 }
 

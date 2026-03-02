@@ -50,14 +50,14 @@ func (c *CompositeWord) Run(vm *VM) error {
 
 // : ( ')' skip ; immediate
 func parenComment(vm *VM) error {
-	vm.Push(int(')'))
+	vm.Push(int64(')'))
 	return skip(vm)
 }
 
 // nlComment '\' skips until the next newline
 // : \ '\n' skip ; immediate
 func nlComment(vm *VM) error {
-	vm.Push(int('\n'))
+	vm.Push(int64('\n'))
 	return skip(vm)
 }
 
@@ -82,7 +82,7 @@ func nextToken(vm *VM, buf []rune) (string, error) {
 // and maybe other literal forms if I want to do so later.
 func decodeLiteral(s string) (interface{}, error) {
 	// try to make an integer...
-	i, e := strconv.Atoi(s)
+	i, e := strconv.ParseInt(s, 10, 64)
 	if e == nil {
 		return i, e
 	}
@@ -262,7 +262,7 @@ func compileLocals(vm *VM) error {
 	}
 
 	buf := make([]rune, 0, 20)
-	var initList []int
+	var initList []int64
 	uninitMode := false
 
 	for {
@@ -317,7 +317,7 @@ func compileLocals(vm *VM) error {
 		ctx.CompileLocals[str+"!"] = idx
 
 		if !uninitMode {
-			initList = append(initList, idx)
+			initList = append(initList, int64(idx))
 		}
 	}
 
@@ -429,7 +429,7 @@ func quotationStart(vm *VM) error {
 		jumpIdx := len(vm.codeseg) - 1
 
 		// Push the jump index to the stack so ;] can resolve it
-		vm.Push(jumpIdx) // Stack: jumpIdx
+		vm.Push(int64(jumpIdx)) // Stack: jumpIdx
 
 		// Start new context
 		parentIdx := vm.CurrentCompCtx().WordIdx
@@ -520,7 +520,7 @@ func quotationEnd(vm *VM) error {
 		// YES, because the fixups were recorded RELATIVE TO START OF SEGMENT.
 		// Since we inserted at StartIP, everything after it shifted.
 		// All fixups are inside the closure, so they are after StartIP.
-		realIP := ip + shift
+		realIP := int(ip) + shift
 
 		targetIP := ctx.StartIP // New start (opEnterScope if locals, or first instr)
 
@@ -571,9 +571,9 @@ func quotationEnd(vm *VM) error {
 		if err != nil {
 			return err
 		}
-		jumpIdx := val.(int)
+		jumpIdx := val.(int64)
 
-		offset := len(vm.codeseg) - jumpIdx
+		offset := len(vm.codeseg) - int(jumpIdx)
 		vm.codeseg[jumpIdx] = uint16(offset) // Patch opBranch
 
 		// 2. Emit opPushClosure
@@ -599,7 +599,7 @@ func quotationEnd(vm *VM) error {
 func litINT(vm *VM) error {
 	vm.ip++
 	num := int16(vm.codeseg[vm.ip])
-	vm.Stack = append(vm.Stack, int(num))
+	vm.Stack = append(vm.Stack, int64(num))
 	return nil
 }
 
@@ -608,7 +608,7 @@ func litINT(vm *VM) error {
 func litUINT(vm *VM) error {
 	vm.ip++
 	num := vm.codeseg[vm.ip]
-	vm.Stack = append(vm.Stack, int(num))
+	vm.Stack = append(vm.Stack, int64(num))
 	return nil
 }
 
@@ -616,7 +616,7 @@ func litUINT(vm *VM) error {
 // codestream.
 func compileLiteral(vm *VM, value interface{}) {
 	switch num := value.(type) {
-	case int:
+	case int64:
 		switch {
 		case (num >= -32768) && (num < 32768):
 			vm.codeseg = append(vm.codeseg, opLitINT, uint16(num))
@@ -679,14 +679,14 @@ func compileComma(vm *VM) error {
 	}
 
 	// Fallback for raw integers (legacy or manual pushing)
-	var num int
-	if i, ok := value.(int); ok {
+	var num int64
+	if i, ok := value.(int64); ok {
 		num = i
 	} else {
 		return ErrArgumentMsg("compile, expects valid word index or execution token")
 	}
 
-	if (num < 0) || (num > len(vm.words)) {
+	if (int(num) < 0) || (int(num) > len(vm.words)) {
 		return ErrArgumentMsg("compile, expects valid word index")
 	}
 

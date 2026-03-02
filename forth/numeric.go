@@ -14,9 +14,9 @@ func add(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = op1 + op2
 		case float64:
 			vm.Stack[top-1] = float64(op1) + op2
@@ -25,7 +25,7 @@ func add(vm *VM) (err error) {
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = op1 + float64(op2)
 		case float64:
 			vm.Stack[top-1] = op1 + op2
@@ -53,9 +53,9 @@ func raiseToPower(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = math.Pow(float64(op2), float64(op1))
 		case float64:
 			vm.Stack[top-1] = math.Pow(op2, float64(op1))
@@ -64,7 +64,7 @@ func raiseToPower(vm *VM) (err error) {
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = math.Pow(float64(op2), op1)
 		case float64:
 			vm.Stack[top-1] = math.Pow(op2, op1)
@@ -85,20 +85,20 @@ func multiply(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = op1 * op2
 		case float64:
 			vm.Stack[top-1] = float64(op1) * op2
 		case string:
-			vm.Stack[top-1] = strings.Repeat(op2, op1)
+			vm.Stack[top-1] = strings.Repeat(op2, int(op1))
 		default:
 			err = ErrArgumentMsg("* requires numeric arguments or string+int")
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = op1 * float64(op2)
 		case float64:
 			vm.Stack[top-1] = op1 * op2
@@ -106,9 +106,9 @@ func multiply(vm *VM) (err error) {
 			err = ErrArgumentMsg("* requires numeric arguments")
 		}
 	case string:
-		op2, ok := vm.Stack[top-1].(int)
+		op2, ok := vm.Stack[top-1].(int64)
 		if ok {
-			vm.Stack[top-1] = strings.Repeat(op1, op2)
+			vm.Stack[top-1] = strings.Repeat(op1, int(op2))
 		} else {
 			err = ErrArgumentMsg("* string repetition requires integer count")
 		}
@@ -126,9 +126,9 @@ func subtract(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = op2 - op1
 		case float64:
 			vm.Stack[top-1] = op2 - float64(op1)
@@ -137,7 +137,7 @@ func subtract(vm *VM) (err error) {
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = float64(op2) - op1
 		case float64:
 			vm.Stack[top-1] = op2 - op1
@@ -158,9 +158,9 @@ func divide(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			if op1 == 0 {
 				err = ErrArgumentMsg("division by zero")
 			} else {
@@ -177,7 +177,7 @@ func divide(vm *VM) (err error) {
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			if op1 == 0 {
 				err = ErrArgumentMsg("division by zero")
 			} else {
@@ -205,7 +205,7 @@ func sqrt(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		if op < 0 {
 			err = ErrArgumentMsg("sqrt requires non-negative argument")
 		} else {
@@ -229,7 +229,7 @@ func log(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		if op <= 0 {
 			err = ErrArgumentMsg("log requires positive argument")
 		} else {
@@ -253,7 +253,7 @@ func log10(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		if op <= 0 {
 			err = ErrArgumentMsg("log10 requires positive argument")
 		} else {
@@ -277,7 +277,7 @@ func log2(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		if op <= 0 {
 			err = ErrArgumentMsg("log2 requires positive argument")
 		} else {
@@ -302,9 +302,9 @@ func max(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			if op2 > op1 {
 				vm.Stack[top-1] = op2
 			} else {
@@ -317,7 +317,7 @@ func max(vm *VM) (err error) {
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = math.Max(float64(op2), op1)
 		case float64:
 			vm.Stack[top-1] = math.Max(op2, op1)
@@ -338,9 +338,9 @@ func min(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op1 := vm.Stack[top].(type) {
-	case int:
+	case int64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			if op2 < op1 {
 				vm.Stack[top-1] = op2
 			} else {
@@ -353,7 +353,7 @@ func min(vm *VM) (err error) {
 		}
 	case float64:
 		switch op2 := vm.Stack[top-1].(type) {
-		case int:
+		case int64:
 			vm.Stack[top-1] = math.Min(float64(op2), op1)
 		case float64:
 			vm.Stack[top-1] = math.Min(op2, op1)
@@ -373,7 +373,7 @@ func sin(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		vm.Stack[len(vm.Stack)-1] = math.Sin(float64(op))
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Sin(op)
@@ -389,7 +389,7 @@ func cos(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		vm.Stack[len(vm.Stack)-1] = math.Cos(float64(op))
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Cos(op)
@@ -405,7 +405,7 @@ func tan(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
+	case int64:
 		vm.Stack[len(vm.Stack)-1] = math.Tan(float64(op))
 	case float64:
 		vm.Stack[len(vm.Stack)-1] = math.Tan(op)
@@ -421,10 +421,10 @@ func round(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
-		vm.Stack[len(vm.Stack)-1] = float64(op)
+	case int64:
+		// already int64
 	case float64:
-		vm.Stack[len(vm.Stack)-1] = math.Round(op)
+		vm.Stack[len(vm.Stack)-1] = int64(math.Round(op))
 	default:
 		err = ErrArgumentMsg("round requires numeric argument")
 	}
@@ -437,10 +437,10 @@ func floor(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
-		vm.Stack[len(vm.Stack)-1] = float64(op)
+	case int64:
+		// already int64
 	case float64:
-		vm.Stack[len(vm.Stack)-1] = math.Floor(op)
+		vm.Stack[len(vm.Stack)-1] = int64(math.Floor(op))
 	default:
 		err = ErrArgumentMsg("floor requires numeric argument")
 	}
@@ -453,10 +453,10 @@ func ceil(vm *VM) (err error) {
 		return ErrUnderflow
 	}
 	switch op := vm.Stack[len(vm.Stack)-1].(type) {
-	case int:
-		vm.Stack[len(vm.Stack)-1] = float64(op)
+	case int64:
+		// already int64
 	case float64:
-		vm.Stack[len(vm.Stack)-1] = math.Ceil(op)
+		vm.Stack[len(vm.Stack)-1] = int64(math.Ceil(op))
 	default:
 		err = ErrArgumentMsg("ceil requires numeric argument")
 	}

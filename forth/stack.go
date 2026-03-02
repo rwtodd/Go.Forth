@@ -130,7 +130,7 @@ func rdrop(vm *VM) error {
 
 // depth pushes the current stack depth
 func depth(vm *VM) error {
-	vm.Push(len(vm.Stack))
+	vm.Push(int64(len(vm.Stack)))
 	return nil
 }
 
@@ -161,13 +161,13 @@ func pick(vm *VM) (e error) {
 	if err != nil {
 		return err
 	}
-	u, ok := uObj.(int)
+	u, ok := uObj.(int64)
 	if !ok {
 		return ErrArgumentMsg("pick expects an integer")
 	}
 
 	slen := len(vm.Stack)
-	index := slen - 1 - u
+	index := slen - 1 - int(u)
 
 	if index < 0 {
 		return ErrUnderflow
@@ -184,7 +184,7 @@ func roll(vm *VM) (e error) {
 	if err != nil {
 		return err
 	}
-	u, ok := uObj.(int)
+	u, ok := uObj.(int64)
 	if !ok {
 		return ErrArgumentMsg("roll expects an integer")
 	}
@@ -194,7 +194,7 @@ func roll(vm *VM) (e error) {
 	}
 
 	slen := len(vm.Stack)
-	index := slen - 1 - u
+	index := slen - 1 - int(u)
 
 	if index < 0 {
 		return ErrUnderflow
@@ -215,7 +215,7 @@ func minusRoll(vm *VM) (e error) {
 	if err != nil {
 		return err
 	}
-	u, ok := uObj.(int)
+	u, ok := uObj.(int64)
 	if !ok {
 		return ErrArgumentMsg("-roll expects an integer")
 	}
@@ -225,7 +225,7 @@ func minusRoll(vm *VM) (e error) {
 	}
 
 	slen := len(vm.Stack)
-	target := slen - 1 - u
+	target := slen - 1 - int(u)
 
 	if target < 0 {
 		return ErrUnderflow

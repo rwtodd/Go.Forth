@@ -11,7 +11,7 @@ func TestExtensions(t *testing.T) {
 	// Register a fake extension
 	RegisterExtension("test-ext", func(vm *VM) error {
 		vm.Define(&NativeWord{name: "test-word", run: func(vm *VM) error {
-			vm.Push(123)
+			vm.Push(int64(123))
 			return nil
 		}, immediate: false})
 		return nil
@@ -68,7 +68,7 @@ func TestExtensions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expected value from test-word")
 		}
-		if val != 123 {
+		if val != int64(123) {
 			t.Errorf("Expected 123, got %v", val)
 		}
 	})

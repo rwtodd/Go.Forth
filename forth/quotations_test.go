@@ -122,7 +122,7 @@ func TestLocalsAfterRecur(t *testing.T) {
 	if len(vm.Stack) != 1 {
 		t.Fatalf("Stack length mismatch. Expected 1, got %d", len(vm.Stack))
 	}
-	if val, ok := vm.Stack[0].(int); !ok || val != 120 {
+	if val, ok := vm.Stack[0].(int64); !ok || val != 120 {
 		t.Errorf("Value mismatch. Expected 120, got %v", vm.Stack[0])
 	}
 	forget(vm)
@@ -144,7 +144,7 @@ func TestTailCallLocalsAfter(t *testing.T) {
 	if len(vm.Stack) != 1 {
 		t.Fatalf("Stack length mismatch. Expected 1, got %d", len(vm.Stack))
 	}
-	if val, ok := vm.Stack[0].(int); !ok || val != 0 {
+	if val, ok := vm.Stack[0].(int64); !ok || val != 0 {
 		t.Errorf("Value mismatch. Expected 0, got %v", vm.Stack[0])
 	}
 	forget(vm)

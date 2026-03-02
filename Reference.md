@@ -117,6 +117,10 @@ The system uses `<<` to mark the start, and `>>` to calculate the number of item
   Creates a new generic array from the stack items.  
   Example: `<< 1 " a" >> <things> .s` → stack: [1 "a"]
 
+- **@spread**: varLenSpread ( array -- item1...itemN count )  
+  Spreads an array onto the stack along with its element count.  
+  Example: `<< 10 20 >> <ints> @spread .s` → stack: 10 20 2
+
 ## Numeric Operations
 
 - **+**: : + ( a b -- a+b )   

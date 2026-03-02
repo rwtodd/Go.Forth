@@ -90,7 +90,7 @@ func read(vm *VM) error {
 	}
 
 	switch delimT := delimStack.(type) {
-	case int:
+	case int64:
 		delim = rune(delimT)
 	case string:
 		var sz int
@@ -198,7 +198,7 @@ func chrFromInt(vm *VM) error {
 	if err != nil {
 		return err
 	}
-	chInt, ok := value.(int)
+	chInt, ok := value.(int64)
 	if !ok {
 		return ErrArgumentMsg("chr requires an integer")
 	}
@@ -223,7 +223,7 @@ func ordFromStr(vm *VM) error {
 	}
 
 	r, _ := utf8.DecodeRuneInString(chStr)
-	vm.Push(int(r))
+	vm.Push(int64(r))
 
 	return nil
 }
