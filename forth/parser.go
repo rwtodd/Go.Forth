@@ -305,7 +305,11 @@ func compileLocals(vm *VM) error {
 
 	// Compile initialization code in reverse order
 	for i := len(initList) - 1; i >= 0; i-- {
-		vm.codeseg = append(vm.codeseg, opLocalSet, 0, uint16(initList[i]))
+		idx := initList[i]
+		if idx > 1023 {
+			return ErrArgumentMsg(fmt.Sprintf("local variable index %d exceeds limit of 1023", idx))
+		}
+		vm.codeseg = append(vm.codeseg, opLocalSet, uint16(idx))
 	}
 
 	return nil
@@ -332,10 +336,17 @@ func compileLoop(vm *VM) error {
 
 		// Check locals first (shadowing) with depth resolution
 		if depth, idx, ok := resolveLocal(vm, str); ok {
+			if depth > 63 {
+				return ErrArgumentMsg(fmt.Sprintf("local variable depth %d exceeds limit of 63", depth))
+			}
+			if idx > 1023 {
+				return ErrArgumentMsg(fmt.Sprintf("local variable index %d exceeds limit of 1023", idx))
+			}
+			packed := uint16((depth << 10) | idx)
 			if str[len(str)-1] == '!' {
-				vm.codeseg = append(vm.codeseg, opLocalSet, uint16(depth), uint16(idx))
+				vm.codeseg = append(vm.codeseg, opLocalSet, packed)
 			} else {
-				vm.codeseg = append(vm.codeseg, opLocalGet, uint16(depth), uint16(idx))
+				vm.codeseg = append(vm.codeseg, opLocalGet, packed)
 			}
 			continue
 		}

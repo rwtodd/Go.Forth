@@ -584,16 +584,18 @@ func debugPrint(vm *VM) error {
 		case opExitScope:
 			fmt.Printf("%03d: %d (exitScope)\n", i, v)
 		case opLocalGet:
-			if i+2 < len(vm.codeseg) {
-				fmt.Printf("%03d: %d (localGet %d %d)\n", i, v, vm.codeseg[i+1], vm.codeseg[i+2])
-				i += 2 // skip the data
+			if i+1 < len(vm.codeseg) {
+				packed := vm.codeseg[i+1]
+				fmt.Printf("%03d: %d (localGet %d %d)\n", i, v, packed>>10, packed&0x3FF)
+				i++ // skip the data
 			} else {
 				fmt.Printf("%03d: %d (localGet ???)\n", i, v)
 			}
 		case opLocalSet:
-			if i+2 < len(vm.codeseg) {
-				fmt.Printf("%03d: %d (localSet %d %d)\n", i, v, vm.codeseg[i+1], vm.codeseg[i+2])
-				i += 2 // skip the data
+			if i+1 < len(vm.codeseg) {
+				packed := vm.codeseg[i+1]
+				fmt.Printf("%03d: %d (localSet %d %d)\n", i, v, packed>>10, packed&0x3FF)
+				i++ // skip the data
 			} else {
 				fmt.Printf("%03d: %d (localSet ???)\n", i, v)
 			}
@@ -765,9 +767,10 @@ func exitScope(vm *VM) error {
 
 // localGet implements the opLocalGet opcode
 func localGet(vm *VM) error {
-	depth := vm.codeseg[vm.ip+1]
-	lidx := vm.codeseg[vm.ip+2]
-	vm.ip += 2
+	packed := vm.codeseg[vm.ip+1]
+	depth := packed >> 10
+	lidx := packed & 0x3FF
+	vm.ip++
 
 	// find the scope at depth
 	scope := vm.HeadScope
@@ -786,9 +789,10 @@ func localGet(vm *VM) error {
 
 // localSet implements the opLocalSet opcode
 func localSet(vm *VM) error {
-	depth := vm.codeseg[vm.ip+1]
-	lidx := vm.codeseg[vm.ip+2]
-	vm.ip += 2
+	packed := vm.codeseg[vm.ip+1]
+	depth := packed >> 10
+	lidx := packed & 0x3FF
+	vm.ip++
 
 	val, err := vm.Pop()
 	if err != nil {
