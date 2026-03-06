@@ -4,6 +4,7 @@ package forth
 
 import (
 	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -18,21 +19,19 @@ func TestEval(t *testing.T) {
 	tstRunForth(t, "EvalSimple", `" 5 10 + " eval`, 15)
 	tstRunForth(t, "EvalNested", `" \" 3 4 * \" eval 2 + " eval 5 +`, 19)
 	tstRunForth(t, "EvalDef", `" : evalword 42 ; " eval evalword`, 42)
+	tstRunForth(t, "Eval During Def", `: testit 1 2 " +" eval ; testit`, 3)
 }
 
 func TestLoad(t *testing.T) {
+	os.WriteFile("/tmp/testload.4th", []byte(": loadword 25 ;"), 0644)
+	defer os.Remove("/tmp/testload.4th")
 	tstRunForth(t, "LoadSimple", `" /tmp/testload.4th" load loadword`, 25)
 }
 
 func TestCompilationChecks(t *testing.T) {
 	vm := NewVM()
-	err := vm.RunFromSource(strings.NewReader(`: badword " testing" eval ;`), "test", io.Discard)
-	if err == nil {
-		t.Errorf("Expected error evaluating during definition, got nil")
-	}
-
 	vm.ClearResetState()
-	err = vm.RunFromSource(strings.NewReader(`: loader " /tmp/testload.4th" load ;`), "test", io.Discard)
+	err := vm.RunFromSource(strings.NewReader(`: loader " /tmp/testload.4th" load ;`), "test", io.Discard)
 	if err == nil {
 		t.Errorf("Expected error loading during definition, got nil")
 	}

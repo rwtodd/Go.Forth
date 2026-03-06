@@ -1,7 +1,6 @@
 package regex
 
 import (
-	"io"
 	"regexp"
 	"strings"
 	"unicode"
@@ -22,7 +21,7 @@ func init() {
 		vm.Define(forth.NewNativeWord("rx-gfind", rxGfind))
 
 		// [rx:] validates compiling a Regex string. Equivalent to `[[ rx: /.../ ]] literal`
-		return vm.RunFromSource(strings.NewReader(": [rx:] rx: postpone literal ; immediate"), "regex-init", io.Discard)
+		return vm.Eval(": [rx:] rx: postpone literal ; immediate")
 	})
 }
 

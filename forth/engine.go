@@ -1049,6 +1049,19 @@ func (vm *VM) RunFromSource(r io.Reader, context string, w io.Writer) error {
 	return vm.Run(w)
 }
 
+// Eval isolates the VM's source stack, interprets a string completely, and returns any errors.
+// This allows evaluation of strings at any time without consuming the rest of the current script.
+func (vm *VM) Eval(code string) error {
+	oldSources := vm.sourceStack
+	vm.sourceStack = nil
+
+	vm.PushSource(strings.NewReader(code), "eval")
+	err := interpret(vm)
+
+	vm.sourceStack = oldSources
+	return err
+}
+
 // ResetState recovers from an error and puts us in
 // a known state to restart the interpreter
 func (vm *VM) ResetState() {

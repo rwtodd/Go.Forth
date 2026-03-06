@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 	"unicode"
 )
 
@@ -767,9 +766,6 @@ func bracketTick(vm *VM) error {
 }
 
 func evalRun(vm *VM) error {
-	if vm.CurrentCompCtx() != nil {
-		return vm.wrapError(ErrBadStateMsg("cannot eval while compiling"))
-	}
 	strVal, err := vm.Pop()
 	if err != nil {
 		return err
@@ -779,8 +775,7 @@ func evalRun(vm *VM) error {
 		return vm.wrapError(ErrArgumentMsg("eval requires a string argument"))
 	}
 
-	vm.PushSource(strings.NewReader(str), "eval string")
-	return nil
+	return vm.Eval(str)
 }
 
 func loadRun(vm *VM) error {
@@ -820,6 +815,6 @@ func parseWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "(|", run: compileLocals, immediate: true})
 	vm.Define(&NativeWord{name: "[", run: quotationStart, immediate: true})
 	vm.Define(&NativeWord{name: "]", run: quotationEnd, immediate: true})
-	vm.Define(&NativeWord{name: "eval", run: evalRun, immediate: true})
+	vm.Define(&NativeWord{name: "eval", run: evalRun, immediate: false})
 	vm.Define(&NativeWord{name: "load", run: loadRun, immediate: true})
 }
