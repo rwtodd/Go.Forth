@@ -321,29 +321,30 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Compiles a literal value.  
   Example: `42 literal`
 
-- **postpone**: postpone creates code that compiles code into the caller. For immediates, it creates code that calls code in the caller.  
-  Postpones compilation of a word.  
-  Example: `: test postpone + ; immediate`
+- **<postpone>**: <postpone> pops a count, then pops that many items from the stack. It postpones compilation of those words into the current definition.  
+  Example: `: test <<" + ">> <postpone> ; immediate`
 
 - **immediate**: func makeImmediate ('immediate') makes the last defined word immediate  
   Makes the last defined word immediate.  
   Example: `: myword ... ; immediate`
 
-- **compile,**: compileComma  
-  Compiles an opcode (integer index) directly into the code stream.  
-  Example: `10 compile,`
+- **compile-xt**: compile-xt
+  Compiles an execution token directly into the code stream. Immediate word.
+  Example: `[[ " dup" lookup-xt ]] compile-xt`
 
-- **'**: tick ( ' name -- xt )  
-  Finds the word in the dictionary and pushes its execution token (index) to the stack.  
-  Example: `' dup`
+- **[ ... ]**: quotationStart (`[`) begins a quotation, and `]` ends it.
+  Quotations run in an isolated scope. When a quotation consists of exactly ONE token, it is optimized at compile-time to simply push the execution token (XT) of that word, acting like standard Forth's `'` and `[']`.
+  Example: `[ dup ]` (pushes XT for dup)
 
-- **[']**: bracketTick ( ['] name -- )  
-  Compiles the execution token of the following word as a literal. Immediate.  
-  Example: `: get-dup ['] dup ;`
+- **read-token**: reads a whitespace-delimited token from the input stream and pushes it as a string.
+  Example: `read-token foo` (pushes "foo")
+
+- **lookup-xt**: pops a string, looks up its Dictionary index, and pushes the WordToken.
+  Example: `" dup" lookup-xt`
 
 - **execute**: execute ( xt -- )  
   Executes the word execution token on the stack.  
-  Example: `' dup execute`
+  Example: `[ dup ] execute`
 
 - **eval**: eval ( s -- )  
   Interprets the string `s` as Forth code.  
@@ -452,29 +453,17 @@ Arrays are dynamic Go slices supporting bytes, ints, floats, and strings. `@` an
 Variables provide named storage for any Go value, similar to traditional FORTH variables. They integrate seamlessly with array operations for automatic updates.
 
 - **variable** ( value "name" -- ): Create a new global variable initialized to the value on the stack.
-  Example: `0 variable x` creates variable x with initial value 0
-  Example: `5 variable y` creates variable y with initial value 5
-
-- **(variable)** ( value name -- ): Stack-based version of variable.
-  Takes the name as a string from the stack and lowercases it.
-  Example: `0 " X" (variable)` creates variable x
+  Example: `0 " x" variable` creates variable x with initial value 0
+  Example: `5 " y" variable` creates variable y with initial value 5
 
 - **variable-does** ( value xt "name" -- ): Create a new word that behaves like a variable but executes the xt when called.
   The execution token (xt) receives the variable's value (address) on the stack.
-  Example: `: constant ['] @ variable-does ;` defines constant
-  Example: `3.14159 constant PI` uses the constant defined above
+  Example: `: constant [ @ ] swap " constant" variable-does ;` defines constant
+  Example: `3.14159 " PI" constant` uses the constant defined above
 
-- **(variable-does)** ( value xt name -- ): Stack-based version of variable-does.
-  Takes the name as a string from the stack and lowercases it.
-  Example: `: my-const ['] @ " MYVAR" (variable-does) ;`
-
-- **constant** ( value "name" -- ): Create a constant.
-  Example: `42 constant ANSWER`
+- **constant** ( value "name" -- ): Create a constant. Wait, note that constant is actually implemented via variable-does!
+  Example: `42 " ANSWER" constant`
   Example: `ANSWER .` prints 42
-
-- **(constant)** ( value name -- ): Stack-based version of constant.
-  Takes the name as a string from the stack and lowercases it.
-  Example: `42 " ANSWER" (constant)`
 
 - **@** (variable -- value): Get variable value, or get element from array in variable
   Example: `x @ .` prints the value of x

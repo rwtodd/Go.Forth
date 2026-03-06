@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
@@ -460,12 +461,40 @@ func quotationStart(vm *VM) error {
 	return nil
 }
 
-// quotationEnd ends a quotation definition
 func quotationEnd(vm *VM) error {
 	ctx := vm.CurrentCompCtx()
 	if !ctx.IsClosure {
 		// Should be impossible given how quotationStart works
 		return ErrBadStateMsg("quotationEnd called on non-closure")
+	}
+
+	// Optimization: If exactly 1 token is compiled, we don't need a closure!
+	if len(vm.codeseg)-int(ctx.StartIP) == 1 &&
+		len(ctx.CompileLocals) == 0 &&
+		len(ctx.ExitFixups) == 0 &&
+		len(ctx.TailCallFixups) == 0 &&
+		len(ctx.RecurFixups) == 0 {
+
+		tokenIdx := vm.codeseg[ctx.StartIP]
+		vm.PopCompCtx()
+
+		parentCtx := vm.CurrentCompCtx()
+		if parentCtx != nil {
+			// We were nested, quotationStart emitted opBranch, 0
+			// and pushed the jump index on the data stack.
+			vm.codeseg = vm.codeseg[:ctx.StartIP-2]
+			_, _ = vm.Pop()
+
+			// Compile the WordToken as a literal object so it is pushed at runtime
+			//vm.literals = append(vm.literals, WordToken{Token: tokenIdx})
+			//vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
+			vm.codeseg = append(vm.codeseg, opLitUINT, tokenIdx)
+		} else {
+			// Top-level, just pop the compiled segment and push WordToken
+			vm.codeseg = vm.codeseg[:ctx.StartIP]
+			vm.Push(WordToken{Token: tokenIdx})
+		}
+		return nil
 	}
 
 	// Before we finish, we might need to insert locals handling code
@@ -682,86 +711,107 @@ func compileComma(vm *VM) error {
 	if i, ok := value.(int64); ok {
 		num = i
 	} else {
-		return ErrArgumentMsg("compile, expects valid word index or execution token")
+		return ErrArgumentMsg("compile-xt expects valid word index or execution token")
 	}
 
 	if (int(num) < 0) || (int(num) > len(vm.words)) {
-		return ErrArgumentMsg("compile, expects valid word index")
+		return ErrArgumentMsg("compile-xt expects valid word index")
 	}
 
 	vm.codeseg = append(vm.codeseg, uint16(num))
 	return nil
 }
 
-// postpone creates code that compiles code into the caller.  For
-// immediates, it creates code that calls code in the caller.
-func postpone(vm *VM) error {
+// postponeList ('<postpone>') pops a count, then pops that many names. It postpones
+// compilation of those names, handling both strings (dictionaries) and literals.
+func postponeList(vm *VM) error {
 	if vm.CurrentCompCtx() == nil {
-		return ErrBadStateMsg("interpret mode (postpone called outside definition)")
+		return ErrBadStateMsg("interpret mode (<postpone> called outside definition)")
 	}
 
-	buf := make([]rune, 0, 20)
-
-	// STEP 1: read the name and look it up
-	str, err := nextToken(vm, buf)
+	countVal, err := vm.Pop()
 	if err != nil {
 		return err
 	}
-
-	opcode, ok := vm.dict[str]
+	countRef, ok := countVal.(int64)
 	if !ok {
-		return ErrArgumentMsg(fmt.Sprintf("POSTPONE: no word <%s>", str))
+		return ErrArgumentMsg("<postpone> expects a count")
+	}
+	count := int(countRef)
+
+	if count < 0 || len(vm.Stack) < count {
+		return ErrArgumentMsg("<postpone> stack underflow")
 	}
 
-	// STEP 2: generate the code
-	if vm.words[opcode].IsImmediate() {
-		// just call the immediate in the caller when it runs
-		vm.codeseg = append(vm.codeseg, opcode)
-	} else {
-		// need to compile a sequence to compile the opcode into the caller's caller
-		vm.codeseg = append(vm.codeseg, opLitUINT, opcode, opCompileComma)
+	// The items are pushed chronologically: item1 item2 ... itemN. So the top of the stack is the LAST token.
+	start := len(vm.Stack) - count
+	items := vm.Stack[start:]
+
+	processItems := make([]any, count)
+	copy(processItems, items)
+
+	vm.Stack = vm.Stack[:start]
+
+	for _, item := range processItems {
+		switch str := item.(type) {
+		case string:
+			str = strings.ToLower(str)
+			opcode, ok := vm.dict[str]
+			if !ok {
+				var lit any
+				if lit, err = decodeLiteral(str); err == nil {
+					compileLiteral(vm, lit)
+					literalIdx := vm.dict["literal"]
+					vm.codeseg = append(vm.codeseg, literalIdx)
+				} else {
+					return ErrArgumentMsg(fmt.Sprintf("<postpone>: no word <%s> and not a literal", str))
+				}
+			} else {
+				if vm.words[opcode].IsImmediate() {
+					vm.codeseg = append(vm.codeseg, opcode)
+				} else {
+					vm.codeseg = append(vm.codeseg, opLitUINT, opcode, opCompileComma)
+				}
+			}
+		default:
+			compileLiteral(vm, str)
+			literalIdx := vm.dict["literal"]
+			vm.codeseg = append(vm.codeseg, literalIdx)
+		}
 	}
 
 	return nil
 }
 
-// tick (') reads the next word and pushes its execution token (index)
-// to the stack.
-func tick(vm *VM) error {
+// readToken ('read-token') reads a whitespace-delimited token from the input stream and pushes it as a string
+func readToken(vm *VM) error {
 	buf := make([]rune, 0, 20)
 	str, err := nextToken(vm, buf)
 	if err != nil {
 		return err
 	}
+	vm.Push(str)
+	return nil
+}
 
+// lookupXT ('lookup-xt') pops a string, looks up its Dictionary index, and pushes the WordToken
+func lookupXT(vm *VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	str, ok := val.(string)
+	if !ok {
+		return ErrArgumentMsg("lookup-xt expects a string")
+	}
+
+	str = strings.ToLower(str)
 	idx, ok := vm.dict[str]
 	if !ok {
-		return ErrArgumentMsg(fmt.Sprintf("' : word <%s> not found", str))
+		return ErrArgumentMsg(fmt.Sprintf("lookup-xt : word <%s> not found", str))
 	}
 
 	vm.Push(WordToken{Token: idx})
-	return nil
-}
-
-// bracketTick ([']) is an immediate word that reads the next word and
-// compiles its execution token (index) as a literal.
-func bracketTick(vm *VM) error {
-	if vm.CurrentCompCtx() == nil {
-		return ErrBadStateMsg("interpret mode (['] called outside definition)")
-	}
-
-	buf := make([]rune, 0, 20)
-	str, err := nextToken(vm, buf)
-	if err != nil {
-		return err
-	}
-
-	idx, ok := vm.dict[str]
-	if !ok {
-		return ErrArgumentMsg(fmt.Sprintf("['] : word <%s> not found", str))
-	}
-
-	compileLiteral(vm, WordToken{Token: idx})
 	return nil
 }
 
@@ -808,10 +858,10 @@ func parseWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: ":", run: compile, immediate: false})
 	vm.Define(&NativeWord{name: ";", run: stopCompile, immediate: true})
 	vm.Define(&NativeWord{name: "literal", run: literal, immediate: true})
-	vm.Define(&NativeWord{name: "postpone", run: postpone, immediate: true})
+	vm.Define(&NativeWord{name: "<postpone>", run: postponeList, immediate: true})
 	vm.Define(&NativeWord{name: "immediate", run: makeImmediate, immediate: true})
-	vm.Define(&NativeWord{name: "'", run: tick, immediate: false})
-	vm.Define(&NativeWord{name: "[']", run: bracketTick, immediate: true})
+	vm.Define(&NativeWord{name: "read-token", run: readToken, immediate: false})
+	vm.Define(&NativeWord{name: "lookup-xt", run: lookupXT, immediate: false})
 	vm.Define(&NativeWord{name: "(|", run: compileLocals, immediate: true})
 	vm.Define(&NativeWord{name: "[", run: quotationStart, immediate: true})
 	vm.Define(&NativeWord{name: "]", run: quotationEnd, immediate: true})

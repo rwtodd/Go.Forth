@@ -3,17 +3,48 @@
 package forth
 
 import (
+	"io"
+	"strings"
 	"testing"
 )
 
 func TestTickAndExecute(t *testing.T) {
-	// Defines a word, gets its xt with ', and executes it
-	tstRunForth(t, "TickExecute", `: hello 42 ; ' hello execute`, 42)
+	// Defines a word, gets its xt, and executes it
+	tstRunForth(t, "TickExecute", `: hello 42 ; " hello" lookup-xt execute`, 42)
+	tstRunForth(t, "TickExecute2", `: hello 142 ; [ hello ] execute`, 142)
+	tstRunForth(t, "QuotOptPlus", `3 3 [ + ] execute`, 6)
+
+	t.Run("InspectCodesegTopLevel", func(t *testing.T) {
+		vm.ClearResetState()
+		startLen := len(vm.codeseg)
+		tprog := strings.NewReader(`[ + ]`)
+		_ = vm.RunFromSource(tprog, "test", io.Discard)
+		if len(vm.codeseg) > startLen {
+			t.Errorf("Codeseg grew by %d tokens! Expected 0 growth.", len(vm.codeseg)-startLen)
+			for i := startLen; i < len(vm.codeseg); i++ {
+				t.Logf("Token %d: %v", i, vm.codeseg[i])
+			}
+		}
+	})
+
+	tstRunForth(t, "QuotOptPlusComp", `: test 3 3 [ + ] execute ; test`, 6)
+
+	t.Run("InspectCodesegNested", func(t *testing.T) {
+		vm.ClearResetState()
+		startLen := len(vm.codeseg)
+		tprog := strings.NewReader(`: test 3 3 [ + ] execute ; test`)
+		_ = vm.RunFromSource(tprog, "test", io.Discard)
+		// We expect : test to generate SOME code, but let's see how much
+		t.Logf("Codeseg grew by %d for nested compilation.", len(vm.codeseg)-startLen)
+		for i := startLen; i < len(vm.codeseg); i++ {
+			t.Logf("Token %d: %v", i, vm.codeseg[i])
+		}
+	})
 }
 
 func TestBracketTick(t *testing.T) {
 	// Compiles a word that uses ['] to get an xt, then executes it
-	tstRunForth(t, "BracketTick", `: hello 99 ; : runner ['] hello execute ; runner`, 99)
+	tstRunForth(t, "BracketTick", `: hello 99 ; : runner [ hello ] execute ; runner`, 99)
 }
 
 func TestCompileComma(t *testing.T) {
@@ -21,7 +52,7 @@ func TestCompileComma(t *testing.T) {
 	// : target 123 ;
 	// : builder [[ ' target compile, ]] ;
 	// builder -> should run target and push 123
-	tstRunForth(t, "CompileComma", `: target 123 ; : builder [[ ' target compile, ]] ; builder`, 123)
+	tstRunForth(t, "CompileComma", `: target 123 ; : builder [[ " target" lookup-xt ]] compile-xt ; builder`, 123)
 }
 
 func TestRecurWithLiterals(t *testing.T) {
@@ -44,5 +75,5 @@ func TestCompileClosure(t *testing.T) {
 	// make-closure pushes a closure that computes 25
 	// runner compiles that closure into itself
 	// executing runner should execute the closure
-	tstRunForth(t, "CompileClosure", `: make-closure [ 5 5 * ] ; : runner [[ make-closure compile, ]] ; runner`, 25)
+	tstRunForth(t, "CompileClosure", `: make-closure [ 5 5 * ] ; : runner [[ make-closure compile-xt ]] ; runner`, 25)
 }

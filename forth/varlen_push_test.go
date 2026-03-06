@@ -59,20 +59,20 @@ func TestVMake(t *testing.T) {
 
 func TestVariableVPush(t *testing.T) {
 	// 1. Variable with ints
-	tstRunForth(t, "VarVPush", `0 variable v 0 ints v ! v << 1 2 3 >> <@push> drop v @len`, 3)
+	tstRunForth(t, "VarVPush", `0 " v" variable 0 ints v ! v << 1 2 3 >> <@push> drop v @len`, 3)
 
 	// 2. Variable check values
-	tstRunForth(t, "VarVPushVal", `0 variable v 0 ints v ! v << 10 20 >> <@push> drop v 1 @`, 20)
+	tstRunForth(t, "VarVPushVal", `0 " v" variable 0 ints v ! v << 10 20 >> <@push> drop v 1 @`, 20)
 
 	// 3. Stack effect: v << ... >> <@push> -> return var
-	// In the test: "variable v" pushes *Variable. "0 ints v !" stores []int64{} in it.
+	// In the test: "0 " v" variable" pushes *Variable. "0 ints v !" stores []int64{} in it.
 	// "v << 99 >> <@push>" pushes *Variable (same one).
 	// "v @" gets the slice? No, "v" pushes var address.
 	// Wait, "v @len". "arrayLen" handles *Variable by getting value.
 	// So if stack has *Variable, "@len" works.
 	// So "v << 99 >> <@push>" leaves *Variable on stack.
 	// Then "@len" consumes it and returns length.
-	tstRunForth(t, "VarStackLen", `0 variable v 0 ints v ! v << 99 >> <@push> @len`, 1)
+	tstRunForth(t, "VarStackLen", `0 " v" variable 0 ints v ! v << 99 >> <@push> @len`, 1)
 }
 
 func TestVPushErrors(t *testing.T) {
@@ -93,7 +93,7 @@ func TestVMakeMixed(t *testing.T) {
 	tstRunForth(t, "VMakeBytes", `<< 65 66 67 >> <bytes> dup @len swap 0 c@`, 3, 65)
 
 	// Test VMakeAny with variable push (append mixed types)
-	tstRunForth(t, "VPushAnyVar", `0 variable v 0 things v ! v << " foo" 42 >> <@push> drop v 1 @ v 0 @`, 42, "foo")
+	tstRunForth(t, "VPushAnyVar", `0 " v" variable 0 things v ! v << " foo" 42 >> <@push> drop v 1 @ v 0 @`, 42, "foo")
 }
 
 func TestSpread(t *testing.T) {

@@ -30,9 +30,9 @@ func TestQuotationsModify(t *testing.T) {
 
 func TestQuotationsEscaping(t *testing.T) {
 	// : make-adder (| n |) [ n + ] ;
-	// 5 make-adder constant add5
+	// 5 make-adder " add5" constant
 	// 10 add5 execute -> 15
-	tstRunForth(t, "EscapingClosure", ": make-adder (| n |) [ n + ] ; 5 make-adder constant add5 10 add5 execute", 15)
+	tstRunForth(t, "EscapingClosure", ": make-adder (| n |) [ n + ] ; 5 make-adder \" add5\" constant 10 add5 execute", 15)
 	tstRunForth(t, "Counter", ": counter (| n |) [ n dup 1 + n! ] ; 1 counter dup execute swap execute", 1, 2)
 	tstRunForth(t, "2 Counters", ": counter (| n |) [ n dup 1 + n! ] ; 1 counter 100 counter execute swap execute", 100, 1)
 }

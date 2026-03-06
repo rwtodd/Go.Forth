@@ -83,29 +83,29 @@ func TestArrayLen(t *testing.T) {
 
 func TestVariable(t *testing.T) {
 	// Create variable and set value
-	tstRunForth(t, "VarSet", `5 0 variable x 42 x !`, 5)
+	tstRunForth(t, "VarSet", `5 0 " x" variable 42 x !`, 5)
 	// Get value
-	tstRunForth(t, "VarGet", `0 variable y y @`, 0)
+	tstRunForth(t, "VarGet", `0 " y" variable y @`, 0)
 	// Update value
-	tstRunForth(t, "VarUpdate", `0 variable z 99 z ! z @`, 99)
+	tstRunForth(t, "VarUpdate", `0 " z" variable 99 z ! z @`, 99)
 }
 
 func TestVariableWithArrays(t *testing.T) {
 	// Push to variable
-	tstRunForth(t, "VarPush", `0 variable arr 3 ints arr ! arr 42 @push drop arr @len`, 4)
+	tstRunForth(t, "VarPush", `0 " arr" variable 3 ints arr ! arr 42 @push drop arr @len`, 4)
 	// Pop from variable
-	tstRunForth(t, "VarPop", `0 variable arr 3 ints arr ! arr @pop drop drop arr @len`, 2)
+	tstRunForth(t, "VarPop", `0 " arr" variable 3 ints arr ! arr @pop drop drop arr @len`, 2)
 	// Test chaining @push on variable
-	tstRunForth(t, "VarPushChain", `0 variable arr 3 ints arr ! arr 7 @push drop arr 6 @push drop arr 5 @push drop arr @len`, 6)
-	tstRunForth(t, "VarPushChain2", `0 variable arr 3 ints arr ! arr 5 @push 6 @push 7 @push 5 @`, 7)
-	tstRunForth(t, "VarPushChain3", `0 variable arr 0 ints arr ! arr 5 @push 6 @push 7 @push @pop swap @pop swap @pop nip`, 7, 6, 5)
+	tstRunForth(t, "VarPushChain", `0 " arr" variable 3 ints arr ! arr 7 @push drop arr 6 @push drop arr 5 @push drop arr @len`, 6)
+	tstRunForth(t, "VarPushChain2", `0 " arr" variable 3 ints arr ! arr 5 @push 6 @push 7 @push 5 @`, 7)
+	tstRunForth(t, "VarPushChain3", `0 " arr" variable 0 ints arr ! arr 5 @push 6 @push 7 @push @pop swap @pop swap @pop nip`, 7, 6, 5)
 }
 
 func TestVariableArrayAccess(t *testing.T) {
 	// Create variable with array and set element
-	tstRunForth(t, "VarArrAccess", `0 variable myarr 3 ints myarr ! 42 myarr 0 ! myarr 0 @`, 42)
+	tstRunForth(t, "VarArrAccess", `0 " myarr" variable 3 ints myarr ! 42 myarr 0 ! myarr 0 @`, 42)
 	// Set another element
-	tstRunForth(t, "VarArrSet", `0 variable myarr 3 ints myarr ! 99 myarr 1 ! myarr 1 @`, 99)
+	tstRunForth(t, "VarArrSet", `0 " myarr" variable 3 ints myarr ! 99 myarr 1 ! myarr 1 @`, 99)
 	// Get default element
-	tstRunForth(t, "VarArrDefault", `0 variable myarr 3 ints myarr ! myarr 2 @`, 0)
+	tstRunForth(t, "VarArrDefault", `0 " myarr" variable 3 ints myarr ! myarr 2 @`, 0)
 }

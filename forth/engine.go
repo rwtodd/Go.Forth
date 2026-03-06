@@ -394,27 +394,13 @@ func mark(vm *VM) error {
 
 // constant creates a new FORTH constant
 func constant(vm *VM) error {
-	buf := make([]rune, 0, 20)
-	str, err := nextToken(vm, buf)
-	if err != nil {
-		return err
-	}
-	val, err := vm.Pop()
-	if err != nil {
-		return err
-	}
-
-	return createConstant(vm, str, val)
-}
-
-func parenConstant(vm *VM) error {
 	strVal, err := vm.Pop()
 	if err != nil {
 		return err
 	}
 	str, ok := strVal.(string)
 	if !ok {
-		return ErrArgumentMsg("(constant) expects a string name")
+		return ErrArgumentMsg("constant expects a string name")
 	}
 
 	val, err := vm.Pop()
@@ -445,12 +431,15 @@ func createConstant(vm *VM, name string, val any) error {
 }
 
 // variableDoes creates a new FORTH word that behaves like a variable with custom behavior
-// ( val xt "name" -- )
+// ( val xt name -- )
 func variableDoes(vm *VM) error {
-	buf := make([]rune, 0, 20)
-	str, err := nextToken(vm, buf)
+	strVal, err := vm.Pop()
 	if err != nil {
 		return err
+	}
+	str, ok := strVal.(string)
+	if !ok {
+		return ErrArgumentMsg("variable-does expects a string name")
 	}
 
 	xtVal, err := vm.Pop()
@@ -475,38 +464,6 @@ func variableDoes(vm *VM) error {
 	return createVariableDoes(vm, str, val, xt)
 }
 
-func parenVariableDoes(vm *VM) error {
-	strVal, err := vm.Pop()
-	if err != nil {
-		return err
-	}
-	str, ok := strVal.(string)
-	if !ok {
-		return ErrArgumentMsg("(variable-does) expects a string name")
-	}
-
-	xtVal, err := vm.Pop()
-	if err != nil {
-		return err
-	}
-
-	var xt ExecutionToken
-	if tok, ok := xtVal.(ExecutionToken); ok {
-		xt = tok
-	} else if idx, ok := xtVal.(int64); ok {
-		xt = WordToken{Token: uint16(idx)}
-	} else {
-		return ErrArgumentMsg("(variable-does) expects execution token or word index")
-	}
-
-	val, err := vm.Pop()
-	if err != nil {
-		return err
-	}
-
-	return createVariableDoes(vm, str, val, xt)
-}
-
 func createVariableDoes(vm *VM, name string, val any, xt ExecutionToken) error {
 	varObj := &Variable{value: val}
 	word := &VariableWord{
@@ -520,30 +477,15 @@ func createVariableDoes(vm *VM, name string, val any, xt ExecutionToken) error {
 }
 
 // variable creates a new FORTH variable
-// ( val "name" -- )
+// ( val name -- )
 func variable(vm *VM) error {
-	buf := make([]rune, 0, 20)
-	str, err := nextToken(vm, buf)
-	if err != nil {
-		return err
-	}
-
-	val, err := vm.Pop()
-	if err != nil {
-		return err
-	}
-
-	return createVariable(vm, str, val)
-}
-
-func parenVariable(vm *VM) error {
 	strVal, err := vm.Pop()
 	if err != nil {
 		return err
 	}
 	str, ok := strVal.(string)
 	if !ok {
-		return ErrArgumentMsg("(variable) expects a string name")
+		return ErrArgumentMsg("variable expects a string name")
 	}
 
 	val, err := vm.Pop()
@@ -941,7 +883,7 @@ func NewVM() *VM {
 	ans.Define(&NativeWord{name: "(litUINT)", run: litUINT, immediate: false})
 	ans.Define(&NativeWord{name: "(litFloat16)", run: litFloat16, immediate: false})
 	ans.Define(&NativeWord{name: "(litDecimal)", run: litDecimal, immediate: false})
-	ans.Define(&NativeWord{name: "compile,", run: compileComma, immediate: false})
+	ans.Define(&NativeWord{name: "compile-xt", run: compileComma, immediate: true})
 	ans.Define(&NativeWord{name: "(branch)", run: branchUnconditional, immediate: false})
 	ans.Define(&NativeWord{name: "(bzr)", run: branchZero, immediate: false})
 	ans.Define(&NativeWord{name: "(call-offset)", run: callOffset, immediate: false})
@@ -965,11 +907,8 @@ func NewVM() *VM {
 	ans.Define(&NativeWord{name: "forget", run: forget, immediate: false})
 	ans.Define(&NativeWord{name: "debug.", run: debugPrint, immediate: false})
 	ans.Define(&NativeWord{name: "variable", run: variable, immediate: false})
-	ans.Define(&NativeWord{name: "(variable)", run: parenVariable, immediate: false})
 	ans.Define(&NativeWord{name: "variable-does", run: variableDoes, immediate: false})
-	ans.Define(&NativeWord{name: "(variable-does)", run: parenVariableDoes, immediate: false})
 	ans.Define(&NativeWord{name: "constant", run: constant, immediate: false})
-	ans.Define(&NativeWord{name: "(constant)", run: parenConstant, immediate: false})
 	ans.Define(&NativeWord{name: "execute", run: execute, immediate: false})
 
 	_ = mark(ans) // give the vm an initial mark after all the core words are added

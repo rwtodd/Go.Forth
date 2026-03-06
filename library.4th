@@ -1,8 +1,7 @@
 
 \ a for-loop over an array
-: @for-{ ( arr -- ) postpone dup postpone @len 0 postpone literal postpone do 
-                    postpone dup postpone i postpone @  postpone swap postpone >r ; immediate
-: }-@for postpone r> postpone loop postpone drop ; immediate   
+: @for-{ ( arr -- ) [[ <<" dup @len 0 do dup i @ swap >r ">> ]] <postpone> ; immediate
+: }-@for [[ <<" r> loop drop ">> ]] <postpone> ; immediate   
 
 \ example use: array sum and product
 \ : @sum  ( arr -- sum )  0 swap @for-{ + }-@for ;
@@ -10,8 +9,8 @@
 
 
 : @for-each (| arr xt | -- ?? ) arr @len 0 do arr i @ xt execute loop ;
-: @sum  ( arr -- sum )  0 swap ['] + @for-each ;
-: @prod ( arr -- prod ) 1 swap ['] * @for-each ;
+: @sum  ( arr -- sum )  0 swap [ + ] @for-each ;
+: @prod ( arr -- prod ) 1 swap [ * ] @for-each ;
 
 \ map across input arrays into a new array (actually a flat-map if the xt returns multiple)
 : @map-append ( dest arr xt ) (| arr xt |)  arr @len 0 do  arr i @ << xt execute >> 1 + <@push>  loop ; 
@@ -25,19 +24,17 @@
 : @map2>i ( a1 a2 xt  -- result)  0 ints 3 -roll @map2-append ;
 : @map2>f ( a1 a2 xt  -- result)  0 floats 3 -roll @map2-append ;
 
-: @dot-prod ( a1 a2 -- prod ) ['] * @map2>f @sum ;
+: @dot-prod ( a1 a2 -- prod ) [ * ] @map2>f @sum ;
 
 
 \ closures are nifty!
-\ : make-counter (| n | -- counter ) [ n dup 1 + n! ] ;
-\ or use variable-does 
-: make-counter ( n "name" -- ) [ dup @ 1 + dup rot ! ] variable-does ;
-
-: countdown ( n "name" -- ) [ dup @ dup 0= IF nip ELSE dup 1 - rot ! THEN ] variable-does ;
+: make-counter ( n name -- ) [ dup @ 1 + dup rot ! ] swap variable-does ;
+: countdown ( n name -- ) [ dup @ dup 0= IF nip ELSE dup 1 - rot ! THEN ] swap variable-does ;
 
 \ paragraph comments.. ignore until you see a blank line...
-10 constant NL \ new line
+" \n" ord " NL" constant \ new line
 : \p ( -- ) [[ NL ]] literal read   begin [[ NL ]] literal read " " = if exit then again ;
 
 \ <fold> ( ... n init xt -- ??? ) fold over the n-list with an initial value and an xt to apply
 : <fold> (| xt |) swap 0 DO xt execute LOOP ;
+
