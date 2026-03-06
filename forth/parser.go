@@ -779,9 +779,9 @@ func evalRun(vm *VM) error {
 }
 
 func loadRun(vm *VM) error {
-	if vm.CurrentCompCtx() != nil {
-		return vm.wrapError(ErrBadStateMsg("cannot load while compiling"))
-	}
+	//	if vm.CurrentCompCtx() != nil {
+	//		return vm.wrapError(ErrBadStateMsg("cannot load while compiling"))
+	//	}
 	fileVal, err := vm.Pop()
 	if err != nil {
 		return err
@@ -816,5 +816,5 @@ func parseWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "[", run: quotationStart, immediate: true})
 	vm.Define(&NativeWord{name: "]", run: quotationEnd, immediate: true})
 	vm.Define(&NativeWord{name: "eval", run: evalRun, immediate: false})
-	vm.Define(&NativeWord{name: "load", run: loadRun, immediate: true})
+	vm.Define(&NativeWord{name: "load", run: loadRun, immediate: false})
 }

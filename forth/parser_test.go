@@ -30,14 +30,7 @@ func TestLoad(t *testing.T) {
 
 func TestCompilationChecks(t *testing.T) {
 	vm := NewVM()
-	vm.ClearResetState()
-	err := vm.RunFromSource(strings.NewReader(`: loader " /tmp/testload.4th" load ;`), "test", io.Discard)
-	if err == nil {
-		t.Errorf("Expected error loading during definition, got nil")
-	}
-
-	vm.ClearResetState()
-	err = vm.RunFromSource(strings.NewReader(`: outerword : innerword ;`), "test", io.Discard)
+	err := vm.RunFromSource(strings.NewReader(`: outerword : innerword ;`), "test", io.Discard)
 	if err == nil {
 		t.Errorf("Expected error starting nested definition, got nil")
 	}
