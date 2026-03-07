@@ -486,8 +486,6 @@ func quotationEnd(vm *VM) error {
 			_, _ = vm.Pop()
 
 			// Compile the WordToken as a literal object so it is pushed at runtime
-			//vm.literals = append(vm.literals, WordToken{Token: tokenIdx})
-			//vm.codeseg = append(vm.codeseg, opLit, uint16(len(vm.literals)-1))
 			vm.codeseg = append(vm.codeseg, opLitUINT, tokenIdx)
 		} else {
 			// Top-level, just pop the compiled segment and push WordToken
