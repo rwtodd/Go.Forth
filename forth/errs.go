@@ -21,6 +21,9 @@ var (
 
 	// ErrKeyNotFound reports when a dictionary key is not found
 	ErrKeyNotFound = errors.New("key not found")
+
+	// ErrUser reports a user-generated error
+	ErrUser = errors.New("user exception")
 )
 
 // Error wraps a sentinel error with a specific message
@@ -50,6 +53,10 @@ func ErrIndexOutOfBoundsMsg(msg string) error {
 
 func ErrKeyNotFoundMsg(msg string) error {
 	return &Error{Err: ErrKeyNotFound, Msg: msg}
+}
+
+func ErrUserMsg(msg string) error {
+	return &Error{Err: ErrUser, Msg: msg}
 }
 
 // ErrInternalMsg wraps a generic error as an internal error, or just returns a new error

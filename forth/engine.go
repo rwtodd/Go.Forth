@@ -832,6 +832,86 @@ func lit(vm *VM) error {
 	return nil
 }
 
+// opThrow implements the throw word ( str -- )
+func opThrow(vm *VM) error {
+	strVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	str, ok := strVal.(string)
+	if !ok {
+		return ErrArgumentMsg("throw expects a string message")
+	}
+	return ErrUserMsg(str)
+}
+
+// opCatch implements the catch? word ( ?? n xt -- ?? bool )
+func opCatch(vm *VM) error {
+	xtVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	nVal, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	n, ok := nVal.(int64)
+	if !ok {
+		return ErrArgumentMsg("catch? expects an integer number of stack items")
+	}
+
+	if n < 0 || int(n) > len(vm.Stack) {
+		return ErrArgumentMsg("catch? invalid number of stack items")
+	}
+
+	var xt ExecutionToken
+	if tok, ok := xtVal.(ExecutionToken); ok {
+		xt = tok
+	} else if idx, ok := xtVal.(int64); ok {
+		xt = WordToken{Token: uint16(idx)}
+	} else {
+		return ErrArgumentMsg("catch? expects execution token or word index")
+	}
+
+	// Isolate the working stack
+	originalStack := vm.Stack[:len(vm.Stack)-int(n)]
+	workingStack := make([]any, int(n))
+	copy(workingStack, vm.Stack[len(vm.Stack)-int(n):])
+
+	vm.Stack = workingStack
+
+	// Save state to restore on error
+	rStackLen := len(vm.Rstack)
+	oldScope := vm.HeadScope
+
+	execErr := xt.Run(vm)
+
+	if execErr != nil {
+		// On error: restore original stack, discard working stack
+		vm.Stack = originalStack
+
+		// Clean up return stack from aborted run
+		if len(vm.Rstack) > rStackLen {
+			clear(vm.Rstack[rStackLen:])
+			vm.Rstack = vm.Rstack[:rStackLen]
+		}
+		// Clean up scope
+		vm.HeadScope = oldScope
+
+		// Push error string and -1 (true)
+		vm.Push(execErr.Error())
+		vm.Push(int64(-1))
+	} else {
+		// On success: append working stack, push 0 (false)
+		vm.Stack = append(originalStack, vm.Stack...)
+		vm.Push(int64(0)) // 0 represents false logic in Go.Forth usually
+	}
+
+	return nil
+}
+
 // RunAt runs the code segment starting at the given IP
 func (vm *VM) RunAt(startIP int) error {
 	rstackLen := len(vm.Rstack)
@@ -844,6 +924,7 @@ func (vm *VM) RunAt(startIP int) error {
 			break
 		}
 		if err := vm.words[idx].Run(vm); err != nil {
+			vm.ip = oldIP
 			return err
 		}
 		vm.ip++
@@ -910,6 +991,8 @@ func NewVM() *VM {
 	ans.Define(&NativeWord{name: "variable-does", run: variableDoes, immediate: false})
 	ans.Define(&NativeWord{name: "constant", run: constant, immediate: false})
 	ans.Define(&NativeWord{name: "execute", run: execute, immediate: false})
+	ans.Define(&NativeWord{name: "catch?", run: opCatch, immediate: false})
+	ans.Define(&NativeWord{name: "throw", run: opThrow, immediate: false})
 
 	_ = mark(ans) // give the vm an initial mark after all the core words are added
 	return ans
