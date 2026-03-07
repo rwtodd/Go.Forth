@@ -86,3 +86,7 @@ func TestThrowInDefinition(t *testing.T) {
 	tstRunForth(t, "throw in definition", `: try-it  0 [ 2 + ] catch? IF drop " yes" ELSE " no" THEN ; try-it`, "yes")
 	tstRunForth(t, "throw in definition 2", `: try-it  0 [ " an error!" throw ] catch? IF drop " yes" ELSE " no" THEN ; try-it`, "yes")
 }
+
+func TestForNoErrors(t *testing.T) {
+	tstRunForth(t, "no errors to catch", `: try-it << 5 2 >> [ + ] catch? IF drop " yes" ELSE 7 = THEN ; try-it`, int64(-1))
+}
