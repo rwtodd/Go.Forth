@@ -21,7 +21,7 @@ func init() {
 		vm.Define(forth.NewNativeWord("rx-gfind", rxGfind))
 
 		// [rx:] validates compiling a Regex string. Equivalent to `[[ rx: /.../ ]] literal`
-		return vm.Eval(": [rx:] rx: postpone literal ; immediate")
+		return vm.Eval(`: [rx:] rx: [[ <<" literal ">> ]] <postpone> ; immediate`)
 	})
 }
 

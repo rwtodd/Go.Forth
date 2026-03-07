@@ -10,15 +10,15 @@ import (
 )
 
 func TestRegexExtension(t *testing.T) {
-	vm := forth.NewVM()
-	err := vm.RunFromSource(strings.NewReader(`<<" regex ">> <activate-extensions>`), "test", io.Discard)
+	vm := forth.NewVM(nil, io.Discard)
+	err := vm.Run(strings.NewReader(`<<" regex ">> <activate-extensions>`), "test")
 	if err != nil {
 		t.Fatalf("Failed to activate regex extension: %v", err)
 	}
 
 	runTest := func(name, code string, expected any) {
 		t.Run(name, func(t *testing.T) {
-			err := vm.RunFromSource(strings.NewReader(code), name, io.Discard)
+			err := vm.Run(strings.NewReader(code), name)
 			if err != nil {
 				t.Fatalf("run failed: %v", err)
 			}

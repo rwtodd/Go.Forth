@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var vm = NewVM()
+var vm = NewVM(nil, io.Discard)
 
 // tstRunForth is the main test helper.. it lets you
 // run a code string, and FAILS if there is an error or
@@ -22,7 +22,7 @@ func tstRunForth(t *testing.T, name string, code string, vals ...any) {
 			t.Errorf("Unexpected error: %v", markerr)
 		}
 		tprog := strings.NewReader(code)
-		if err := vm.RunFromSource(tprog, "test", io.Discard); err != nil {
+		if err := vm.Run(tprog, "test"); err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
 		if !stackEq(vals...) {
@@ -44,7 +44,7 @@ func tstRunForthErr(t *testing.T, name string, code string, expectedErr error, v
 		if markerr := mark(vm); markerr != nil {
 			t.Errorf("Unexpected error: %v", markerr)
 		}
-		if err := vm.RunFromSource(tprog, "test", io.Discard); !errors.Is(err, expectedErr) {
+		if err := vm.Run(tprog, "test"); !errors.Is(err, expectedErr) {
 			t.Errorf("Error mismatch. Expected: %v, Got: %v", expectedErr, err)
 		}
 		if !stackEq(vals...) {

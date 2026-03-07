@@ -69,7 +69,8 @@ func TestRecursionNoLocals(t *testing.T) {
 	code := `[ dup 0= IF . " DONE!" type cr ELSE dup 1 - RECUR " WAS" . . cr THEN ]  4 swap execute`
 
 	var buf stdbytes.Buffer
-	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
+	vm.SetOutput(&buf)
+	if err := vm.Run(strings.NewReader(code), "test"); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -88,7 +89,8 @@ func TestRecursionLocalsAccess(t *testing.T) {
 	code := `[ (| n |) n 0= IF n . " DONE!" type cr ELSE n 1 - RECUR " WAS" . n . cr THEN ] 4 swap execute`
 
 	var buf stdbytes.Buffer
-	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
+	vm.SetOutput(&buf)
+	if err := vm.Run(strings.NewReader(code), "test"); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -113,9 +115,8 @@ func TestLocalsAfterRecur(t *testing.T) {
 	// [ dup 0 > IF dup 1 - recur * ELSE drop 1 THEN (| | temp ) ]
 	code := `[ dup 0 > IF dup 1 - recur * ELSE drop 1 THEN (| | temp ) ] 5 swap execute`
 
-	var buf stdbytes.Buffer
 	// We expect 120 on stack, no output.
-	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
+	if err := vm.Run(strings.NewReader(code), "test"); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -136,8 +137,7 @@ func TestTailCallLocalsAfter(t *testing.T) {
 	// This captures the tail-call scenario with late locals.
 	code := `[ dup 0 > IF 1 - (tail-call) ELSE THEN (| | n ) ] 5 swap execute`
 
-	var buf stdbytes.Buffer
-	if err := vm.RunFromSource(strings.NewReader(code), "test", &buf); err != nil {
+	if err := vm.Run(strings.NewReader(code), "test"); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 

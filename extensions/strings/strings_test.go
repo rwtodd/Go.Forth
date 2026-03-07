@@ -9,15 +9,15 @@ import (
 )
 
 func TestStringsExtension(t *testing.T) {
-	vm := forth.NewVM()
-	err := vm.RunFromSource(strings.NewReader(`<<" strings ">> <activate-extensions>`), "test", io.Discard)
+	vm := forth.NewVM(nil, io.Discard)
+	err := vm.Run(strings.NewReader(`<<" strings ">> <activate-extensions>`), "test")
 	if err != nil {
 		t.Fatalf("Failed to activate strings extension: %v", err)
 	}
 
 	runTest := func(name, code string, expected any) {
 		t.Run(name, func(t *testing.T) {
-			err := vm.RunFromSource(strings.NewReader(code), name, io.Discard)
+			err := vm.Run(strings.NewReader(code), name)
 			if err != nil {
 				t.Fatalf("run failed: %v", err)
 			}

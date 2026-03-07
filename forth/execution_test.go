@@ -3,7 +3,6 @@
 package forth
 
 import (
-	"io"
 	"strings"
 	"testing"
 )
@@ -18,7 +17,7 @@ func TestTickAndExecute(t *testing.T) {
 		vm.ClearResetState()
 		startLen := len(vm.codeseg)
 		tprog := strings.NewReader(`[ + ]`)
-		_ = vm.RunFromSource(tprog, "test", io.Discard)
+		_ = vm.Run(tprog, "test")
 		if len(vm.codeseg) > startLen {
 			t.Errorf("Codeseg grew by %d tokens! Expected 0 growth.", len(vm.codeseg)-startLen)
 			for i := startLen; i < len(vm.codeseg); i++ {
@@ -33,7 +32,7 @@ func TestTickAndExecute(t *testing.T) {
 		vm.ClearResetState()
 		startLen := len(vm.codeseg)
 		tprog := strings.NewReader(`: test 3 3 [ + ] execute ; test`)
-		_ = vm.RunFromSource(tprog, "test", io.Discard)
+		_ = vm.Run(tprog, "test")
 		// We expect : test to generate SOME code, but let's see how much
 		t.Logf("Codeseg grew by %d for nested compilation.", len(vm.codeseg)-startLen)
 		for i := startLen; i < len(vm.codeseg); i++ {

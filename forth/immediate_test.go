@@ -3,7 +3,6 @@
 package forth
 
 import (
-	"io"
 	"strings"
 	"testing"
 )
@@ -23,7 +22,7 @@ func TestImmediateWord(t *testing.T) {
 
 	vm.ClearResetState()
 	mark(vm)
-	err := vm.RunFromSource(strings.NewReader(code), "test", io.Discard)
+	err := vm.Run(strings.NewReader(code), "test")
 	if err != nil {
 		t.Fatalf("Failed to run code: %v", err)
 	}
@@ -33,7 +32,8 @@ func TestImmediateWord(t *testing.T) {
 	}
 	// this time capture the output into a buffer
 	var buf strings.Builder
-	err = vm.RunFromSource(strings.NewReader("test"), "test", &buf)
+	vm.SetOutput(&buf)
+	err = vm.Run(strings.NewReader("test"), "test")
 	if err != nil {
 		t.Errorf("Failed to execute test word: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestImmediateWord(t *testing.T) {
     `
 	vm.ResetState()
 	mark(vm)
-	err = vm.RunFromSource(strings.NewReader(code2), "test", io.Discard)
+	err = vm.Run(strings.NewReader(code2), "test")
 	if err != nil {
 		t.Fatalf("Failed to run code: %v", err)
 	}
@@ -59,7 +59,8 @@ func TestImmediateWord(t *testing.T) {
 	}
 	// this time capture the output into a buffer
 	var buf2 strings.Builder
-	err = vm.RunFromSource(strings.NewReader("test2"), "test", &buf2)
+	vm.SetOutput(&buf2)
+	err = vm.Run(strings.NewReader("test2"), "test")
 	if err != nil {
 		t.Errorf("Failed to execute test2 word: %v", err)
 	}

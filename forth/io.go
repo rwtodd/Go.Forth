@@ -72,13 +72,13 @@ func delimitedWSRead(source io.RuneReader, buf []rune) ([]rune, error) {
 	return buf, err
 }
 
-// read looks at the top of the stack, and tries to interpret it
+// parse looks at the top of the stack, and tries to interpret it
 // as a rune.  If it can, then it reads until it finds that rune,
 // and leaves the string it read at the top of the stack.
 //
 // A special case is when the delimiter is a space, in which case
-// it reads until any whitespace is found.
-func read(vm *VM) error {
+// it reads until any whitespace is found. (Reads from CodeSource)
+func parse(vm *VM) error {
 	var (
 		delim rune
 		err   error
@@ -97,10 +97,10 @@ func read(vm *VM) error {
 		delim, sz = utf8.DecodeRuneInString(delimT)
 		// it needs to be a one-char string
 		if sz != len(delimT) {
-			return ErrArgumentMsg("read requires a single-character delimiter")
+			return ErrArgumentMsg("parse requires a single-character delimiter")
 		}
 	default:
-		return ErrArgumentMsg("read requires an integer or string delimiter")
+		return ErrArgumentMsg("parse requires an integer or string delimiter")
 	}
 
 	buf := make([]rune, 0, 20)
@@ -114,9 +114,80 @@ func read(vm *VM) error {
 	return err
 }
 
-// : skip ( delim -- ) read drop ;
-func skip(vm *VM) error {
-	err := read(vm)
+// read-line reads a line from InputSource (stripping \n or \r\n)
+func readLine(vm *VM) error {
+	var buf []byte
+	var b [1]byte
+	for {
+		n, err := vm.InputSource.Read(b[:])
+		if n > 0 {
+			ch := b[0]
+			if ch == '\n' {
+				break
+			}
+			buf = append(buf, ch)
+		}
+		if err != nil {
+			if err == io.EOF {
+				break // Return what we have so far
+			}
+			return err
+		}
+	}
+	// strip \r if present
+	if len(buf) > 0 && buf[len(buf)-1] == '\r' {
+		buf = buf[:len(buf)-1]
+	}
+	vm.Push(string(buf))
+	return nil
+}
+
+// read reads from InputSource until a given delimiter character
+func readInput(vm *VM) error {
+	var delim rune
+
+	delimStack, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+
+	switch delimT := delimStack.(type) {
+	case int64:
+		delim = rune(delimT)
+	case string:
+		var sz int
+		delim, sz = utf8.DecodeRuneInString(delimT)
+		if sz != len(delimT) {
+			return ErrArgumentMsg("read requires a single-character delimiter")
+		}
+	default:
+		return ErrArgumentMsg("read requires an integer or string delimiter")
+	}
+
+	var buf []byte
+	var b [1]byte
+	for {
+		n, err := vm.InputSource.Read(b[:])
+		if n > 0 {
+			if rune(b[0]) == delim {
+				break
+			}
+			buf = append(buf, b[0])
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	vm.Push(string(buf))
+	return nil
+}
+
+// : skip-parse ( delim -- ) parse drop ;
+func skipParse(vm *VM) error {
+	err := parse(vm)
 	if err != nil {
 		return err
 	}
@@ -159,12 +230,6 @@ func escapedRead(source io.RuneReader, delim rune, buf []rune) ([]rune, error) {
 				ch = '"'
 			default:
 				// Unknown escape, keep literal backslash and char?
-				// Or strict error? C usually keeps literal char.
-				// user said "interpret common escape codes like \n \t \\ and \"".
-				// Let's keep the backslash if it's not a known escape?
-				// But simpler to just append 'ch' if it's not special?
-				// Actually, if it's unknown, usually it's just the char.
-				// e.g. \a -> a.
 			}
 		}
 		buf = append(buf, ch)
@@ -176,7 +241,7 @@ func escapedRead(source io.RuneReader, delim rune, buf []rune) ([]rune, error) {
 	return buf, err
 }
 
-// : " 34 read (compiling?) if postpone literal then ; immediate
+// : " 34 parse (compiling?) if postpone literal then ; immediate
 func openQuote(vm *VM) error {
 	buf, err := escapedRead(vm, '"', nil)
 	if err != nil {
@@ -266,8 +331,10 @@ func printCR(vm *VM) error {
 
 // ioWordsInit adds the io-related core words to the VM.
 func ioWordsInit(vm *VM) {
-	vm.Define(&NativeWord{name: "read", run: read, immediate: false})
-	vm.Define(&NativeWord{name: "skip", run: skip, immediate: false})
+	vm.Define(&NativeWord{name: "parse", run: parse, immediate: false})
+	vm.Define(&NativeWord{name: "read", run: readInput, immediate: false})
+	vm.Define(&NativeWord{name: "read-line", run: readLine, immediate: false})
+	vm.Define(&NativeWord{name: "skip-parse", run: skipParse, immediate: false})
 	vm.Define(&NativeWord{name: "\"", run: openQuote, immediate: true})
 	vm.Define(&NativeWord{name: "chr", run: chrFromInt, immediate: false})
 	vm.Define(&NativeWord{name: "ord", run: ordFromStr, immediate: false})

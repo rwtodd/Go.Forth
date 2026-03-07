@@ -265,8 +265,10 @@ type VM struct {
 	curdef     int      // the start-index of the word we are currently defining
 	curwordidx int      // the index in words of the word we are currently defining
 
-	sourceStack []sourceLevel // Stack of input sources
-	Sink        io.Writer     // our output
+	CodeSource  io.RuneReader
+	CodeContext string
+	InputSource io.Reader
+	Sink        io.Writer // our output
 
 	marker VmMark // place to roll back to when we FORGET
 
@@ -944,12 +946,14 @@ func (vm *VM) RunAt(startIP int) error {
 }
 
 // NewVM returns a new Forth VM, initialized with the base
-// wordset
-func NewVM() *VM {
+// wordset and standard input/output readers
+func NewVM(in io.Reader, out io.Writer) *VM {
 	ans := &VM{
 		dict:                make(map[string]uint16),
 		strMap:              make(map[string]int),
 		ActivatedExtensions: make(map[string]bool),
+		InputSource:         in,
+		Sink:                out,
 	}
 
 	// SPECIAL... must be specific opcodes to match constants
@@ -998,125 +1002,84 @@ func NewVM() *VM {
 	return ans
 }
 
-// PushSource adds a new source to the VM's input stack
-func (vm *VM) PushSource(r io.Reader, context string) {
-	// Let's add a trailing newline so that any trailing token
-	// is properly ended and evaluated, rather than unexpectedly
-	// merging with tokens from the parent source
-	inner := io.MultiReader(r, strings.NewReader("\n"))
+// SetInput changes the VM's input source for interactive reads
+func (vm *VM) SetInput(in io.Reader) {
+	vm.InputSource = in
+}
 
-	level := sourceLevel{
-		reader:  bufio.NewReader(inner),
-		context: context,
-	}
-	if closer, ok := r.(io.Closer); ok {
-		level.closer = closer
-	}
-
-	vm.sourceStack = append(vm.sourceStack, level)
+// SetOutput changes the VM's standard output stream
+func (vm *VM) SetOutput(out io.Writer) {
+	vm.Sink = out
 }
 
 // wrapError prepends the current source context to an error
 func (vm *VM) wrapError(err error) error {
-	if err == nil || len(vm.sourceStack) == 0 {
+	if err == nil || vm.CodeContext == "" {
 		return err
 	}
-	ctx := vm.sourceStack[len(vm.sourceStack)-1].context
-	if ctx == "" {
-		return err
-	}
-	return fmt.Errorf("%s: %w", ctx, err)
+	return fmt.Errorf("%s: %w", vm.CodeContext, err)
 }
 
-// ReadRune implements io.RuneReader for the VM, transparently pulling
-// from the top of the source stack and popping sources when exhausted.
+// ReadRune implements io.RuneReader for the VM, pulling from the current CodeSource.
 func (vm *VM) ReadRune() (rune, int, error) {
-	for len(vm.sourceStack) > 0 {
-		topIdx := len(vm.sourceStack) - 1
-		ch, size, err := vm.sourceStack[topIdx].reader.ReadRune()
-
-		if err == io.EOF {
-			// Current source exhausted. Close it if possible, pop it, and continue.
-			if vm.sourceStack[topIdx].closer != nil {
-				_ = vm.sourceStack[topIdx].closer.Close()
-			}
-			vm.sourceStack = vm.sourceStack[:topIdx]
-			continue
-		}
-
-		if err != nil {
-			return ch, size, vm.wrapError(err)
-		}
-
-		return ch, size, nil
+	if vm.CodeSource == nil {
+		return 0, 0, io.EOF
 	}
-	return 0, 0, io.EOF
+	return vm.CodeSource.ReadRune()
 }
 
-// Run executes the sources on the VM's source stack, writing output
-// to an output stream 'w'. If the source stack is empty, it pushes
-// os.Stdin as the default source first.
-func (vm *VM) Run(w io.Writer) error {
-	if len(vm.sourceStack) == 0 {
-		vm.PushSource(os.Stdin, "stdin")
-	}
-	vm.Sink = w
-	vm.CompStack = nil
-	return interpret(vm)
-}
+// Run executes the given code source, tracking the context.
+// It replaces the previous code source for the duration of the interpretation.
+func (vm *VM) Run(codeSource io.Reader, context string) error {
+	oldSource := vm.CodeSource
+	oldContext := vm.CodeContext
 
-// RunFromSource pushes a new source onto the stack and runs it.
-func (vm *VM) RunFromSource(r io.Reader, context string, w io.Writer) error {
-	vm.PushSource(r, context)
-	return vm.Run(w)
-}
+	// We wrap in a bufio.Reader to ensure we have RuneReader capabilities and a trailing newline
+	inner := io.MultiReader(codeSource, strings.NewReader("\n"))
+	vm.CodeSource = bufio.NewReader(inner)
+	vm.CodeContext = context
 
-// Eval isolates the VM's source stack, interprets a string completely, and returns any errors.
-// This allows evaluation of strings at any time without consuming the rest of the current script.
-func (vm *VM) Eval(code string) error {
-	oldSources := vm.sourceStack
-	vm.sourceStack = nil
-
-	vm.PushSource(strings.NewReader(code), "eval")
 	err := interpret(vm)
 
-	vm.sourceStack = oldSources
+	if closer, ok := codeSource.(io.Closer); ok {
+		_ = closer.Close()
+	}
+
+	vm.CodeSource = oldSource
+	vm.CodeContext = oldContext
+
 	return err
+}
+
+// Load executes a file by name, setting the context to the filename.
+func (vm *VM) Load(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	return vm.Run(bufio.NewReader(f), filename)
+}
+
+// Eval interprets a string completely and returns any errors.
+// This allows evaluation of strings at any time without consuming the rest of the current script.
+func (vm *VM) Eval(code string) error {
+	ctxName := "eval"
+	if vm.CodeContext != "" {
+		ctxName = fmt.Sprintf("eval (%s)", vm.CodeContext)
+	}
+	return vm.Run(strings.NewReader(code), ctxName)
 }
 
 // ResetState recovers from an error and puts us in
 // a known state to restart the interpreter
 func (vm *VM) ResetState() {
-	// Make sure to close any intermediate files that might have been open when we errored out
-	// But keep the bottom-most source ("stdin" or the original launched file)
-	for len(vm.sourceStack) > 1 {
-		topIdx := len(vm.sourceStack) - 1
-		if vm.sourceStack[topIdx].closer != nil {
-			_ = vm.sourceStack[topIdx].closer.Close()
-		}
-		vm.sourceStack = vm.sourceStack[:topIdx]
-	}
-
 	vm.Stack = nil
 	vm.Rstack = nil
 	vm.CompStack = nil
 	vm.ip = 0
 }
 
-// ClearSources removes and closes all input sources from the stack.
-// Primarily used for testing reset isolation.
-func (vm *VM) ClearSources() {
-	for len(vm.sourceStack) > 0 {
-		topIdx := len(vm.sourceStack) - 1
-		if vm.sourceStack[topIdx].closer != nil {
-			_ = vm.sourceStack[topIdx].closer.Close()
-		}
-		vm.sourceStack = vm.sourceStack[:topIdx]
-	}
-}
-
-// ClearResetState removes all sources and resets state.
+// ClearResetState resets the execution state.
 func (vm *VM) ClearResetState() {
-	vm.ClearSources()
 	vm.ResetState()
 }

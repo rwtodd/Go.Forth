@@ -1,12 +1,13 @@
 package forth
 
 import (
+	"io"
 	"strings"
 	"testing"
 )
 
 func TestExceptions(t *testing.T) {
-	vm := NewVM()
+	vm := NewVM(nil, io.Discard)
 
 	tests := []struct {
 		name     string

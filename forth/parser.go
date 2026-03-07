@@ -5,7 +5,6 @@ package forth
 import (
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"unicode"
@@ -48,17 +47,17 @@ func (c *CompositeWord) Run(vm *VM) error {
 	return nil
 }
 
-// : ( ')' skip ; immediate
+// : ( ')' skip-parse ; immediate
 func parenComment(vm *VM) error {
 	vm.Push(int64(')'))
-	return skip(vm)
+	return skipParse(vm)
 }
 
 // nlComment '\' skips until the next newline
-// : \ '\n' skip ; immediate
+// : \ '\n' skip-parse ; immediate
 func nlComment(vm *VM) error {
 	vm.Push(int64('\n'))
-	return skip(vm)
+	return skipParse(vm)
 }
 
 func nextToken(vm *VM, buf []rune) (string, error) {
@@ -137,8 +136,8 @@ func interpret(vm *VM) (err error) {
 			err = vm.words[idx].Run(vm)
 			if err != nil {
 				ctxName := "unknown"
-				if len(vm.sourceStack) > 0 {
-					ctxName = vm.sourceStack[len(vm.sourceStack)-1].context
+				if vm.CodeContext != "" {
+					ctxName = vm.CodeContext
 				}
 
 				lastWordInfo := ""
@@ -839,13 +838,7 @@ func loadRun(vm *VM) error {
 		return vm.wrapError(ErrArgumentMsg("load requires a string filename"))
 	}
 
-	importFile, err := os.Open(filename)
-	if err != nil {
-		return vm.wrapError(fmt.Errorf("failed to load %s: %w", filename, err))
-	}
-
-	vm.PushSource(importFile, filename)
-	return nil
+	return vm.Load(filename)
 }
 
 func parseWordsInit(vm *VM) {

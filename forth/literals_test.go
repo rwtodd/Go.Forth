@@ -3,12 +3,13 @@
 package forth
 
 import (
+	"io"
 	"strings"
 	"testing"
 )
 
 func TestLiteralOptimization(t *testing.T) {
-	vm := NewVM()
+	vm := NewVM(nil, io.Discard)
 
 	// Define a word that uses various literals
 	src := `
@@ -21,7 +22,7 @@ func TestLiteralOptimization(t *testing.T) {
 	;`
 
 	// Run the definition
-	if err := vm.RunFromSource(strings.NewReader(src), "test", nil); err != nil {
+	if err := vm.Run(strings.NewReader(src), "test"); err != nil {
 		t.Fatalf("Failed to compile test-lits: %v", err)
 	}
 
@@ -78,7 +79,7 @@ func TestLiteralExecution(t *testing.T) {
 }
 
 func TestFloat16Optimization(t *testing.T) {
-	vm := NewVM()
+	vm := NewVM(nil, io.Discard)
 
 	// 1.0 -> optimizable
 	// 1.5 -> optimizable
@@ -93,7 +94,7 @@ func TestFloat16Optimization(t *testing.T) {
 		70000.0
 	;`
 
-	if err := vm.RunFromSource(strings.NewReader(src), "test", nil); err != nil {
+	if err := vm.Run(strings.NewReader(src), "test"); err != nil {
 		t.Fatalf("Failed to compile test-float-lits: %v", err)
 	}
 
@@ -134,7 +135,7 @@ func TestFloat16Execution(t *testing.T) {
 }
 
 func TestDecimalOptimization(t *testing.T) {
-	vm := NewVM()
+	vm := NewVM(nil, io.Discard)
 
 	// 0.1 -> Decimal (Scale 0)
 	// 1.23 -> Decimal (Scale 1)
@@ -153,7 +154,7 @@ func TestDecimalOptimization(t *testing.T) {
 		123.4567
 	;`
 
-	if err := vm.RunFromSource(strings.NewReader(src), "test", nil); err != nil {
+	if err := vm.Run(strings.NewReader(src), "test"); err != nil {
 		t.Fatalf("Failed to compile test-dec-lits: %v", err)
 	}
 

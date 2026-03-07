@@ -29,8 +29,8 @@ func TestLoad(t *testing.T) {
 }
 
 func TestCompilationChecks(t *testing.T) {
-	vm := NewVM()
-	err := vm.RunFromSource(strings.NewReader(`: outerword : innerword ;`), "test", io.Discard)
+	vm := NewVM(nil, io.Discard)
+	err := vm.Run(strings.NewReader(`: outerword : innerword ;`), "test")
 	if err == nil {
 		t.Errorf("Expected error starting nested definition, got nil")
 	}

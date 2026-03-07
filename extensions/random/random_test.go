@@ -9,14 +9,14 @@ import (
 )
 
 func TestRandomExtension(t *testing.T) {
-	vm := forth.NewVM()
-	err := vm.RunFromSource(strings.NewReader(`<<" random ">> <activate-extensions>`), "test", io.Discard)
+	vm := forth.NewVM(nil, io.Discard)
+	err := vm.Run(strings.NewReader(`<<" random ">> <activate-extensions>`), "test")
 	if err != nil {
 		t.Fatalf("Failed to activate random extension: %v", err)
 	}
 
 	t.Run("randint", func(t *testing.T) {
-		err := vm.RunFromSource(strings.NewReader("10 4 randint"), "test", io.Discard)
+		err := vm.Run(strings.NewReader("10 4 randint"), "test")
 		if err != nil {
 			t.Fatalf("randint failed: %v", err)
 		}
@@ -30,7 +30,7 @@ func TestRandomExtension(t *testing.T) {
 	})
 
 	t.Run("randfloat", func(t *testing.T) {
-		err := vm.RunFromSource(strings.NewReader("randfloat"), "test", io.Discard)
+		err := vm.Run(strings.NewReader("randfloat"), "test")
 		if err != nil {
 			t.Fatalf("randfloat failed: %v", err)
 		}
@@ -44,18 +44,18 @@ func TestRandomExtension(t *testing.T) {
 	})
 
 	t.Run("@seed", func(t *testing.T) {
-		err := vm.RunFromSource(strings.NewReader("42 randseed!"), "test", io.Discard)
+		err := vm.Run(strings.NewReader("42 randseed!"), "test")
 		if err != nil {
 			t.Fatalf("@seed failed: %v", err)
 		}
 
-		err = vm.RunFromSource(strings.NewReader("100 0 randint"), "test", io.Discard)
+		err = vm.Run(strings.NewReader("100 0 randint"), "test")
 		if err != nil {
 			t.Fatalf("randint after seed failed: %v", err)
 		}
 		val1, _ := vm.Pop()
 
-		err = vm.RunFromSource(strings.NewReader("42 randseed! 100 0 randint"), "test", io.Discard)
+		err = vm.Run(strings.NewReader("42 randseed! 100 0 randint"), "test")
 		if err != nil {
 			t.Fatalf("randint after re-seed failed: %v", err)
 		}
@@ -67,7 +67,7 @@ func TestRandomExtension(t *testing.T) {
 	})
 
 	t.Run("@select", func(t *testing.T) {
-		err := vm.RunFromSource(strings.NewReader(`<< 10 20 30 >> <ints> @select`), "test", io.Discard)
+		err := vm.Run(strings.NewReader(`<< 10 20 30 >> <ints> @select`), "test")
 		if err != nil {
 			t.Fatalf("@select failed: %v", err)
 		}
@@ -82,12 +82,12 @@ func TestRandomExtension(t *testing.T) {
 	})
 
 	t.Run("@shuffle", func(t *testing.T) {
-		err := vm.RunFromSource(strings.NewReader(`<< 10 20 30 >> <ints> constant y  y @shuffle`), "test", io.Discard)
+		err := vm.Run(strings.NewReader(`<< 10 20 30 >> <ints> " y" constant  y @shuffle`), "test")
 		if err != nil {
 			t.Fatalf("@shuffle failed: %v", err)
 		}
 		// Since it's shuffled, elements should still be exactly 10, 20, 30.
-		err = vm.RunFromSource(strings.NewReader(`y 0 @ y 1 @ y 2 @ + +`), "test", io.Discard)
+		err = vm.Run(strings.NewReader(`y 0 @ y 1 @ y 2 @ + +`), "test")
 		if err != nil {
 			t.Fatalf("reading shuffled array failed: %v", err)
 		}

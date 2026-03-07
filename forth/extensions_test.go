@@ -23,8 +23,8 @@ func TestExtensions(t *testing.T) {
 	})
 
 	t.Run("ExtensionList", func(t *testing.T) {
-		vm := NewVM()
-		vm.RunFromSource(strings.NewReader("extension-list"), "test", io.Discard)
+		vm := NewVM(nil, io.Discard)
+		vm.Run(strings.NewReader("extension-list"), "test")
 		val, err := vm.Pop()
 		if err != nil {
 			t.Fatalf("Expected value on stack, got error: %v", err)
@@ -46,9 +46,9 @@ func TestExtensions(t *testing.T) {
 	})
 
 	t.Run("ActivateExtension", func(t *testing.T) {
-		vm := NewVM()
+		vm := NewVM(nil, io.Discard)
 		// "test-ext" 1 <activate-extensions>
-		err := vm.RunFromSource(strings.NewReader(`<<" test-ext ">> <activate-extensions>`), "test", io.Discard)
+		err := vm.Run(strings.NewReader(`<<" test-ext ">> <activate-extensions>`), "test")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -60,7 +60,7 @@ func TestExtensions(t *testing.T) {
 		}
 
 		// Run test-word
-		err = vm.RunFromSource(strings.NewReader("test-word"), "test", io.Discard)
+		err = vm.Run(strings.NewReader("test-word"), "test")
 		if err != nil {
 			t.Fatalf("Unexpected error running test-word: %v", err)
 		}
@@ -74,25 +74,25 @@ func TestExtensions(t *testing.T) {
 	})
 
 	t.Run("ActivateUnknownExtension", func(t *testing.T) {
-		vm := NewVM()
-		err := vm.RunFromSource(strings.NewReader(`<<" unknown-ext ">> <activate-extensions>`), "test", io.Discard)
+		vm := NewVM(nil, io.Discard)
+		err := vm.Run(strings.NewReader(`<<" unknown-ext ">> <activate-extensions>`), "test")
 		if err == nil {
 			t.Error("Expected error activating unknown extension")
 		}
 	})
 
 	t.Run("ActivateFailingExtension", func(t *testing.T) {
-		vm := NewVM()
-		err := vm.RunFromSource(strings.NewReader(`<<" fail-ext ">> <activate-extensions>`), "test", io.Discard)
+		vm := NewVM(nil, io.Discard)
+		err := vm.Run(strings.NewReader(`<<" fail-ext ">> <activate-extensions>`), "test")
 		if err == nil {
 			t.Error("Expected error activating failing extension")
 		}
 	})
 
 	t.Run("ActivateWithOutVarlenSyntax", func(t *testing.T) {
-		vm := NewVM()
+		vm := NewVM(nil, io.Discard)
 		// <<" test-ext ">> <activate-extensions>
-		err := vm.RunFromSource(strings.NewReader(`" test-ext" 1 <activate-extensions>`), "test", io.Discard)
+		err := vm.Run(strings.NewReader(`" test-ext" 1 <activate-extensions>`), "test")
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -103,7 +103,7 @@ func TestExtensions(t *testing.T) {
 	})
 
 	t.Run("ActivateIdempotency", func(t *testing.T) {
-		vm := NewVM()
+		vm := NewVM(nil, io.Discard)
 		counter := 0
 		RegisterExtension("counter-ext", func(vm *VM) error {
 			counter++
@@ -111,7 +111,7 @@ func TestExtensions(t *testing.T) {
 		})
 
 		// First activation
-		err := vm.RunFromSource(strings.NewReader(`" counter-ext" 1 <activate-extensions>`), "test", io.Discard)
+		err := vm.Run(strings.NewReader(`" counter-ext" 1 <activate-extensions>`), "test")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -120,7 +120,7 @@ func TestExtensions(t *testing.T) {
 		}
 
 		// Second activation should be no-op
-		err = vm.RunFromSource(strings.NewReader(`" counter-ext" 1 <activate-extensions>`), "test", io.Discard)
+		err = vm.Run(strings.NewReader(`" counter-ext" 1 <activate-extensions>`), "test")
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
