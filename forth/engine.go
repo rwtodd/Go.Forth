@@ -1041,10 +1041,6 @@ func (vm *VM) Run(codeSource io.Reader, context string) error {
 
 	err := interpret(vm)
 
-	if closer, ok := codeSource.(io.Closer); ok {
-		_ = closer.Close()
-	}
-
 	vm.CodeSource = oldSource
 	vm.CodeContext = oldContext
 
@@ -1057,6 +1053,7 @@ func (vm *VM) Load(filename string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	return vm.Run(bufio.NewReader(f), filename)
 }
 
