@@ -16,7 +16,7 @@ func init() {
 		vm.Define(forth.NewNativeWord("rx-gsub", rxGsub))
 		vm.Define(forth.NewNativeWord("rx-sub", rxSub))
 		vm.Define(forth.NewNativeWord("rx-split", rxSplit))
-		vm.Define(forth.NewNativeWord("rx-match", rxMatchXt))
+		vm.Define(forth.NewNativeWord("rx-gmatch?", rxMatchXt))
 		vm.Define(forth.NewNativeWord("rx-find", rxFind))
 		vm.Define(forth.NewNativeWord("rx-gfind", rxGfind))
 
@@ -112,7 +112,7 @@ func rxCompile(vm *forth.VM) error {
 	return nil
 }
 
-// rx-match? ( string pattern -- bool )
+// rx-match? ( string pattern -- False | groups start-index True )
 func rxMatch(vm *forth.VM) error {
 	re, err := getPattern(vm, "rx-match?")
 	if err != nil {
@@ -128,11 +128,26 @@ func rxMatch(vm *forth.VM) error {
 		return forth.ErrArgumentMsg("rx-match? expects a target string")
 	}
 
-	if re.MatchString(str) {
-		vm.Push(int64(-1)) // True in Forth
-	} else {
+	matches := re.FindStringSubmatchIndex(str)
+	if matches == nil {
 		vm.Push(int64(0)) // False in Forth
+		return nil
 	}
+
+	startIdx := matches[0]
+
+	var groups []string
+	for i := 0; i < len(matches); i += 2 {
+		if matches[i] == -1 || matches[i+1] == -1 {
+			groups = append(groups, "")
+		} else {
+			groups = append(groups, str[matches[i]:matches[i+1]])
+		}
+	}
+
+	vm.Push(groups)
+	vm.Push(int64(startIdx))
+	vm.Push(int64(-1)) // True in Forth
 	return nil
 }
 
@@ -226,7 +241,7 @@ func rxSplit(vm *forth.VM) error {
 	return nil
 }
 
-// rx-match ( string pattern xt -- )
+// rx-gmatch? ( string pattern xt -- count )
 func rxMatchXt(vm *forth.VM) error {
 	xtVal, err := vm.Pop()
 	if err != nil {
@@ -238,11 +253,11 @@ func rxMatchXt(vm *forth.VM) error {
 		if idx, isInt := xtVal.(int64); isInt {
 			xt = forth.WordToken{Token: uint16(idx)}
 		} else {
-			return forth.ErrArgumentMsg("rx-match expects an execution token")
+			return forth.ErrArgumentMsg("rx-gmatch? expects an execution token")
 		}
 	}
 
-	re, err := getPattern(vm, "rx-match")
+	re, err := getPattern(vm, "rx-gmatch?")
 	if err != nil {
 		return err
 	}
@@ -253,32 +268,40 @@ func rxMatchXt(vm *forth.VM) error {
 	}
 	str, ok := strVal.(string)
 	if !ok {
-		return forth.ErrArgumentMsg("rx-match expects a target string")
+		return forth.ErrArgumentMsg("rx-gmatch? expects a target string")
 	}
 
-	matches := re.FindStringSubmatchIndex(str)
+	matches := re.FindAllStringSubmatchIndex(str, -1)
 	if matches == nil {
-		return nil // no match, do nothing
+		vm.Push(int64(0))
+		return nil
 	}
 
-	startIdx := matches[0]
+	for _, match := range matches {
+		startIdx := match[0]
 
-	// create array of subgroups
-	var groups []string
-	for i := 0; i < len(matches); i += 2 {
-		if matches[i] == -1 || matches[i+1] == -1 {
-			groups = append(groups, "")
-		} else {
-			groups = append(groups, str[matches[i]:matches[i+1]])
+		// create array of subgroups
+		var groups []string
+		for i := 0; i < len(match); i += 2 {
+			if match[i] == -1 || match[i+1] == -1 {
+				groups = append(groups, "")
+			} else {
+				groups = append(groups, str[match[i]:match[i+1]])
+			}
+		}
+
+		// push match info: index, groups array
+		vm.Push(int64(startIdx))
+		vm.Push(groups)
+
+		// execute XT
+		if err := xt.Run(vm); err != nil {
+			return err
 		}
 	}
 
-	// push match info: index, groups array
-	vm.Push(int64(startIdx))
-	vm.Push(groups)
-
-	// execute XT
-	return xt.Run(vm)
+	vm.Push(int64(len(matches)))
+	return nil
 }
 
 // rx-find ( string pattern -- string )

@@ -65,9 +65,9 @@ func TestRegexExtension(t *testing.T) {
 	runTest("[rx:]", `: make-pat [rx:] /test/ ; make-pat`, "test")
 	runTest("rx-compile", `rx: /^foo/ rx-compile`, regexp.MustCompile("^foo"))
 
-	runTest("match?-t", `" foo" rx: /^f/ rx-match?`, true)
-	runTest("match?-f", `" bar" rx: /^f/ rx-match?`, false)
-	runTest("match?-compiled", `" foo" rx: /^f/ rx-compile rx-match?`, true)
+	runTest("match?-t", `: m-t " foo" [rx:] /^f/ rx-match? IF drop drop -1 ELSE 0 THEN ; m-t`, true)
+	runTest("match?-f", `: m-f " bar" [rx:] /^f/ rx-match? IF drop drop -1 ELSE 0 THEN ; m-f`, false)
+	runTest("match?-compiled", `rx: /^f/ rx-compile : m-c " foo" swap rx-match? IF drop drop -1 ELSE 0 THEN ; m-c`, true)
 
 	runTest("gsub", `" hello lolo" rx: /lo/ " x" rx-gsub`, "helx xx")
 	runTest("gsub-compiled", `" hello lolo" rx: /lo/ rx-compile " x" rx-gsub`, "helx xx")
@@ -86,5 +86,5 @@ func TestRegexExtension(t *testing.T) {
 	runTest("gfind", `"  a b 1 c " rx: /[a-z]/ rx-gfind`, []string{"a", "b", "c"})
 	runTest("gfind-fail", `"  1 2 3 " rx: /[a-z]/ rx-gfind`, []string{})
 
-	runTest("match-xt", `" hello" rx: /(e)(l)/ [ 1 @ nip ] rx-match`, "e")
+	runTest("gmatch-xt", `" hello lolo" rx: /(e)(l)/ [ drop drop ] rx-gmatch?`, 1)
 }
