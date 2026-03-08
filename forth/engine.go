@@ -278,6 +278,15 @@ type VM struct {
 	ActivatedExtensions map[string]bool // Set of activated extensions
 }
 
+// LookupToken finds a word in the dictionary and returns it as a WordToken
+func (vm *VM) LookupToken(name string) (ExecutionToken, error) {
+	idx, ok := vm.dict[strings.ToLower(name)]
+	if !ok {
+		return nil, ErrArgumentMsg(fmt.Sprintf("LookupToken: word not found: %s", name))
+	}
+	return WordToken{Token: idx}, nil
+}
+
 // CurrentCompCtx returns the current compilation context, or nil if not compiling
 // Note: This returns a pointer to the slice element, so modifications affect the stack.
 func (vm *VM) CurrentCompCtx() *CompilationCtx {

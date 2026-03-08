@@ -87,4 +87,7 @@ func TestRegexExtension(t *testing.T) {
 	runTest("gfind-fail", `"  1 2 3 " rx: /[a-z]/ rx-gfind`, []string{})
 
 	runTest("gmatch-xt", `" hello lolo" rx: /(e)(l)/ [ drop drop ] rx-gmatch?`, 1)
+
+	runTest("rx-of-match", `: m-rxof " test" case [rx:] /es/ rx-of drop drop 11 endof 22 endcase ; m-rxof`, 11)
+	runTest("rx-of-nomatch", `: m-rxof-no " foo" case [rx:] /es/ rx-of drop drop 11 endof 22 swap endcase ; m-rxof-no`, 22)
 }

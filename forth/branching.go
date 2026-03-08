@@ -406,6 +406,108 @@ func branchWordsInit(vm *VM) {
 	vm.Define(&NativeWord{name: "until", run: opUntil, immediate: true})
 	vm.Define(&NativeWord{name: "while", run: opWhile, immediate: true})
 	vm.Define(&NativeWord{name: "repeat", run: opRepeat, immediate: true})
+	vm.Define(&NativeWord{name: "case", run: opCase, immediate: true})
+	vm.Define(&NativeWord{name: "of", run: opOf, immediate: true})
+	vm.Define(&NativeWord{name: "endof", run: opEndof, immediate: true})
+	vm.Define(&NativeWord{name: "endcase", run: opEndcase, immediate: true})
+}
+
+// BEGIN ( -- )
+func opCase(vm *VM) error {
+	if vm.CurrentCompCtx() == nil {
+		return ErrBadStateMsg("CASE used outside of definition")
+	}
+	vm.Push(int64(0)) // count of OFs
+	return nil
+}
+
+func opOf(vm *VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	count, ok := val.(int64)
+	if !ok {
+		return ErrBadStateMsg("OF expects a count on stack")
+	}
+
+	overTok, err := vm.LookupToken("over")
+	if err != nil {
+		return err
+	}
+	eqTok, err := vm.LookupToken("=")
+	if err != nil {
+		return err
+	}
+	dropTok, err := vm.LookupToken("drop")
+	if err != nil {
+		return err
+	}
+
+	if err := overTok.Compile(vm); err != nil {
+		return err
+	}
+	if err := eqTok.Compile(vm); err != nil {
+		return err
+	}
+
+	err = opIf(vm)
+	if err != nil {
+		return err
+	}
+
+	if err := dropTok.Compile(vm); err != nil {
+		return err
+	}
+
+	vm.Push(count + 1)
+	return nil
+}
+
+func opEndof(vm *VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	count, ok := val.(int64)
+	if !ok {
+		return ErrBadStateMsg("ENDOF expects a count on stack")
+	}
+
+	err = opElse(vm)
+	if err != nil {
+		return err
+	}
+
+	vm.Push(count)
+	return nil
+}
+
+func opEndcase(vm *VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	count, ok := val.(int64)
+	if !ok {
+		return ErrBadStateMsg("ENDCASE expects a count on stack")
+	}
+
+	dropTok, err := vm.LookupToken("drop")
+	if err != nil {
+		return err
+	}
+	if err := dropTok.Compile(vm); err != nil {
+		return err
+	}
+
+	for i := int64(0); i < count; i++ {
+		err = opThen(vm)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BEGIN ( -- )

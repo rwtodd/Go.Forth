@@ -77,3 +77,21 @@ func TestControlFlowContext(t *testing.T) {
 	// EXIT outside definition
 	tstRunForthErr(t, "EXIT interpret mode", "exit", ErrBadState)
 }
+
+func TestCase(t *testing.T) {
+	// Simple match
+	// 5 case 5 of 99 endof 88 endcase -> should be 99
+	tstRunForth(t, "Simple CASE Match", ": test-case-1 5 case 5 of 99 endof 88 endcase ; test-case-1", 99)
+
+	// No match (fallthrough drops case value)
+	// 4 case 5 of 99 endof 88 swap endcase -> should be 88 (4 is dropped by ENDCASE)
+	tstRunForth(t, "CASE Fallthrough", ": test-case-2 4 case 5 of 99 endof 88 swap endcase ; test-case-2", 88)
+
+	// Multiple OFs
+	// 2 case 1 of 11 endof 2 of 22 endof 3 of 33 endof 99 swap endcase -> 22, 2 drops at ENDCASE
+	tstRunForth(t, "Multiple OFs", ": test-case-3 2 case 1 of 11 endof 2 of 22 endof 3 of 33 endof 99 swap endcase ; test-case-3", 22)
+
+	// Default case retaining value
+	// 4 case 1 of 11 endof 2 of 22 endof 99 swap endcase -> 99
+	tstRunForth(t, "Default CASE", ": test-case-4 4 case 1 of 11 endof 2 of 22 endof 99 swap endcase ; test-case-4", 99)
+}

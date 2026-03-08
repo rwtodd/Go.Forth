@@ -19,6 +19,7 @@ func init() {
 		vm.Define(forth.NewNativeWord("rx-gmatch?", rxMatchXt))
 		vm.Define(forth.NewNativeWord("rx-find", rxFind))
 		vm.Define(forth.NewNativeWord("rx-gfind", rxGfind))
+		vm.Define(forth.NewImmediateWord("rx-of", rxOf))
 
 		// [rx:] validates compiling a Regex string. Equivalent to `[[ rx: /.../ ]] literal`
 		return vm.Eval(`: [rx:] rx: [[ <<" literal ">> ]] <postpone> ; immediate`)
@@ -348,5 +349,67 @@ func rxGfind(vm *forth.VM) error {
 		res = []string{}
 	}
 	vm.Push(res)
+	return nil
+}
+
+// rx-of ( #of -- orig #of+1 / x -- ) immediate
+func rxOf(vm *forth.VM) error {
+	val, err := vm.Pop()
+	if err != nil {
+		return err
+	}
+	count, ok := val.(int64)
+	if !ok {
+		return forth.ErrBadStateMsg("RX-OF expects a count on stack")
+	}
+
+	overTok, err := vm.LookupToken("over")
+	if err != nil {
+		return err
+	}
+	swapTok, err := vm.LookupToken("swap")
+	if err != nil {
+		return err
+	}
+	matchTok, err := vm.LookupToken("rx-match?")
+	if err != nil {
+		return err
+	}
+	ifTok, err := vm.LookupToken("if")
+	if err != nil {
+		return err
+	}
+	rotTok, err := vm.LookupToken("rot")
+	if err != nil {
+		return err
+	}
+	dropTok, err := vm.LookupToken("drop")
+	if err != nil {
+		return err
+	}
+
+	if err := overTok.Compile(vm); err != nil {
+		return err
+	}
+	if err := swapTok.Compile(vm); err != nil {
+		return err
+	}
+	if err := matchTok.Compile(vm); err != nil {
+		return err
+	}
+
+	err = ifTok.Run(vm)
+	if err != nil {
+		return err
+	}
+
+	if err := rotTok.Compile(vm); err != nil {
+		return err
+	}
+	if err := dropTok.Compile(vm); err != nil {
+		return err
+	}
+
+	vm.Push(count + 1)
 	return nil
 }
