@@ -263,9 +263,9 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
   Skips input until the delimiter.  
   Example: `32 skip` (skips until space)
 
-- **"**: : " 34 escapedRead (compiling?) if postpone literal then ; immediate  
+- **"**: : 
   Parses a string literal. Supports C-style escape sequences: `\n`, `\t`, `\r`, `\\`, `\"`.  
-  Example: `"hello\nworld" type`
+  Example: `" hello\nworld" type`
 
 - **chr**: chrFromInt ('chr') takes an integer and makes a one-char string of it, interpreted as a rune  
   Converts int to character.  
@@ -273,7 +273,7 @@ System uses -1 for TRUE and 0 for FALSE. Comparisons work on ints, floats, and s
 
 - **ord**: ordFromStr ('ord') takes a one-character string and gives its rune value as an int. It is the inverse of 'chr'.  
   Converts character to int.  
-  Example: `"A" ord .` → 65
+  Example: `" A" ord .` → 65
 
 - **.s**: printStack prints out the stack contents, without removing anything.  
   Prints the entire stack.  
@@ -458,10 +458,10 @@ Variables provide named storage for any Go value, similar to traditional FORTH v
 
 - **variable-does** ( value xt "name" -- ): Create a new word that behaves like a variable but executes the xt when called.
   The execution token (xt) receives the variable's value (address) on the stack.
-  Example: `: constant [ @ ] swap " constant" variable-does ;` defines constant
+  Example: `: constant [ @ ] swap  variable-does ;` defines constant
   Example: `3.14159 " PI" constant` uses the constant defined above
 
-- **constant** ( value "name" -- ): Create a constant. Wait, note that constant is actually implemented via variable-does!
+- **constant** ( value "name" -- ): Create a constant. Constant is actually implemented via variable-does!
   Example: `42 " ANSWER" constant`
   Example: `ANSWER .` prints 42
 

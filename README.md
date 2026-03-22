@@ -1,12 +1,10 @@
-# Forth
-An embeddable postfix mini-language for my Go programs.
+# Go.Forth
+An embeddable postfix mini-language for Go programs.
 
 ## Does it follow ANS FORTH?
 
-No, and gets farther from it every day.  Primarily because I did not want to simulate a raw memory space, which would
-complicate interactions between the language and Go.  So, instead, I
-make the stack and all variables of garbage-collected type
-`any`, and provide overloads so you can say stuff like:
+No, and it intentionally diverges from ANS FORTH. Primarily because I did not want to simulate a raw memory space, which would
+complicate interactions between the language and Go. Instead, the stack and all variables use garbage-collected Go `any` types, with overloads allowing operations like:
 
 ~~~~~~
 : double dup + ;
@@ -15,27 +13,46 @@ make the stack and all variables of garbage-collected type
 hihi
 ~~~~~~
 
-Similarly, I won't have words like `c,` to push raw data into a data segment.
+There are no words like `c,` to push raw data into a data segment.
 
-Otherwise, though, it should feel pretty FORTHy, with immediate words 
+Otherwise, it should feel pretty FORTHy, with immediate words
 and `POSTPONE` letting you do compile-time programming.
 
 ## Is it fast?
 
-It's too early to tell how fast or slow it will be, but I'm focused
-first and formost on making it easy to embed and interact with the host
-Go program.  Speed is secondary, becuse anything that's annoyingly slow can
+Performance is secondary to ease of embedding and interaction with the host Go program. Anything that's annoyingly slow can
 always be provided from the Go side of the wall.
 
 ## What is the status?
 
-This is just preliminary work.  Words implemented, organized by category:
+Go.Forth is a mature, embeddable Forth interpreter written in Go. It supports a comprehensive set of words for stack manipulation, arithmetic, control flow, arrays, dictionaries, variables, and more. See `Reference.md` for a complete word reference.
+
+## Extensions
+
+Go.Forth supports optional extensions that add specialized functionality:
+
+- **random**: Random number generation and array shuffling (`randint`, `randfloat`, `randseed!`, `@shuffle`, `@select`)
+- **regex**: Regular expression operations (`rx:`, `rx-match?`, `rx-gsub`, `rx-split`, etc.)
+- **strings**: String manipulation utilities (`trim""`, `upper""`, `split""`, `replace""`, etc.)
+
+Extensions can be activated with: `<<" extension-name ">> <activate-extensions>`
+
+## Library Files
+
+- `library.4th`: Higher-level utilities for array operations (`@sum`, `@prod`, `@map`, etc.)
+
+## Words Implemented
+
+Go.Forth supports a comprehensive set of words organized by category (see `Reference.md` for complete details):
 
 ### Stack Manipulation
 dup drop swap over rot -rot pick roll -roll nip tuck >r r> r@ rdrop depth
 
+### Variable Length Arguments
+<< >> <<" <@push> <ints> <floats> <strings> <bytes> <things> @spread sprintf
+
 ### Arithmetic & Math
-+ - * / sqrt ** log log10 log2 max min sin cos tan round floor ceil
++ - * / ** sqrt log log10 log2 max min sin cos tan round floor ceil
 
 ### Comparison & Logic
 = < > <= >= <> 0= 0< 0> and or xor invert true false
@@ -44,23 +61,19 @@ dup drop swap over rot -rot pick roll -roll nip tuck >r r> r@ rdrop depth
 if else then recur do loop +loop i j leave exit begin again until while repeat
 
 ### Input/Output
-read skip " chr ord .s . type cr sprintf
+read skip " chr ord .s . type cr
 
 ### Compilation & Definition
-: ; literal postpone immediate compile, ' ['] execute
+: ; literal postpone immediate compile, ' ['] execute eval load
 
 ### Interpretation Control
 [[ ]] [ ]
 
 ### Comments
-\ (
+\ ( \p
 
 ### Arrays
 bytes ints floats strings things @ ! c@ c! @len @push @pop @shift @unshift
-<@push> <ints> <floats> <strings> <things> <<"
-
-### Extensions
-extension-list <activate-extensions>
 
 ### Variables & Constants
 variable variable-does constant @ !
@@ -68,42 +81,38 @@ variable variable-does constant @ !
 ### Local Variables
 (| |)
 
+### Quotations/Closures
+[ ] execute
+
 ### Dictionaries
-empty-dict d@ d! ddel dkeys d@| d@? 
+empty-dict d@ d! ddel dkeys d@| d@?
+
+### Extensions
+extension-list <activate-extensions>
 
 ### Internal/System
-debug. mark forget
+debug. mark forget read-token lookup-xt
 
-At this point, you can define custom words, which can include
-immediate ("macro"-type words) which use `postpone`. 
+You can define custom words, including immediate ("macro"-type) words using `postpone`.
 
-As of Sept 2018, we have IF/ELSE/THEN, RECUR, and DO loops.
+Go.Forth supports advanced features like quotations/closures, local variables, dictionaries, and variable-length argument handling.
+
+Example with quotations and locals:
 
 ~~~~~~
-: block ( size -- )
-  0 swap tuck 0 DO over over DO j type i .  LOOP cr LOOP
-  drop drop ;
-: blocks ( num -- ) 1 + 1 DO i block loop ;
-4 blocks
-00
-00 01
-10 11
-00 01 02
-10 11 12
-20 21 22
-00 01 02 03
-10 11 12 13
-20 21 22 23
-30 31 32 33
-
-: regreet ( num -- ) " HELLO! " . 1 - dup IF recur ELSE drop THEN ;
-5 regreet
-HELLO!  HELLO!  HELLO!  HELLO!  HELLO! 
+: make-adder (| n |) [ n + ] ;
+5 make-adder [ @ execute ] " add5" variable-does
+10 add5 .  \ prints 15
 ~~~~~~
 
-At this point, it's actually starting to be useful to embed in things as a basic
-control language.  I need to flesh out the math functions, and make it easy to 
-deal with Go arrays.
+Example with arrays and higher-order functions (using library.4th):
+
+~~~~~~
+<< 1 2 3 4 5 >> <ints> @sum .  \ prints 15
+<< 1 2 3 4 5 >> <ints> [ 2 * ] @map @sum .  \ prints 30
+~~~~~~
+
+Go.Forth is ready for embedding in Go applications as a powerful scripting and control language.
 
 ## Prior Work
 
