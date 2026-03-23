@@ -94,6 +94,17 @@ dup ( a -- a a ) duplicates the top item on the stack.
 drop ( a -- ) removes the top item from the stack.
 over ( a b -- a b a ) copies the second item to the top.
 rot ( a b c -- b c a ) rotates the top three items.
+nip ( a b -- b ) removes the second item.
+tuck ( a b -- b a b ) tucks top under second.
+-rot ( a b c -- c a b ) reverse rotation.
+>r ( x -- ) to return stack.
+r> ( -- x ) from return stack.
+r@ ( -- x ) peek return stack.
+rdrop ( -- ) drop return stack.
+depth ( -- n ) stack depth.
+pick ( n -- x ) copy nth item.
+roll ( n -- ) roll nth to top.
+-roll ( n -- ) roll nth down.
 + ( n1 n2 -- n3 ) adds two numbers.
 - ( n1 n2 -- n3 ) subtracts n2 from n1.
 * ( n1 n2 -- n3 ) multiplies two numbers.
@@ -114,10 +125,18 @@ ceil ( n -- ceil(n) ) rounds up to integer.
 = ( a b -- bool ) tests if two values are equal.
 < ( n1 n2 -- bool ) tests if n1 is less than n2.
 > ( n1 n2 -- bool ) tests if n1 is greater than n2.
+<= ( n1 n2 -- bool ) less or equal.
+>= ( n1 n2 -- bool ) greater or equal.
+<> ( n1 n2 -- bool ) not equal.
+0= ( n -- bool ) zero equal.
+0< ( n -- bool ) zero less.
+0> ( n -- bool ) zero greater.
 and ( n1 n2 -- n3 ) bitwise AND of two numbers.
 or ( n1 n2 -- n3 ) bitwise OR of two numbers.
 xor ( n1 n2 -- n3 ) bitwise XOR of two numbers.
-not ( n -- ~n ) bitwise NOT of a number.
+invert ( n -- ~n ) bitwise NOT of a number.
+true ( -- true ) true constant.
+false ( -- false ) false constant.
 if ( bool -- ) begins a conditional block.
 else ( -- ) provides alternative in conditional.
 then ( -- ) ends a conditional block.
@@ -125,8 +144,11 @@ begin ( -- ) starts an indefinite loop.
 until ( bool -- ) ends loop when condition is true.
 do ( limit index -- ) starts a counted loop.
 loop ( -- ) ends a counted loop.
++loop ( n -- ) ends incrementing loop.
+leave ( -- ) leaves loop.
 i ( -- index ) gets current loop index.
 j ( -- index ) gets outer loop index.
+exit ( -- ) exits word.
 variable ( val name -- ) creates a named variable.
 constant ( val name -- ) creates a named constant.
 @ ( var -- val ) gets value from variable.
@@ -143,8 +165,12 @@ ints ( size -- arr ) creates an array of integers.
 floats ( size -- arr ) creates an array of floats.
 strings ( size -- arr ) creates an array of strings.
 bytes ( size -- arr ) creates an array of bytes.
+c@ ( arr idx -- byte ) gets byte at index.
+c! ( byte arr idx -- ) sets byte at index.
 @push ( val arr -- arr ) adds value to end of array.
 @pop ( arr -- arr val ) removes and returns last value.
+@shift ( arr -- arr val ) removes first value.
+@unshift ( val arr -- arr ) adds value to front.
 @ ( arr idx -- val ) gets value at index from array or variable.
 ! ( val arr idx -- ) sets value at index in array or variable.
 @len ( arr -- len ) gets array length.
@@ -153,6 +179,8 @@ d@ ( d key -- val ) gets value for key.
 d! ( val d key -- ) sets value for key.
 d@? ( d key -- val bool ) gets value and existence flag.
 dkeys ( d -- keys ) gets all keys as array.
+ddel ( d key -- ) deletes key.
+d@| ( d key def -- val ) gets or default.
 << ( -- ) starts variable-length argument collection.
 >> ( -- count ) ends collection, pushes item count.
 <@push> ( arr item1...itemN count -- arr ) pushes multiple items to array.
