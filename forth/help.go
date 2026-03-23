@@ -142,6 +142,13 @@ else ( -- ) provides alternative in conditional.
 then ( -- ) ends a conditional block.
 begin ( -- ) starts an indefinite loop.
 until ( bool -- ) ends loop when condition is true.
+again ( -- ) unconditional back.
+while ( bool -- ) conditional forward.
+repeat ( -- ) end while repeat.
+case ( selector -- ) case start.
+of ( -- ) of clause.
+endof ( -- ) end of clause.
+endcase ( -- ) end case.
 do ( limit index -- ) starts a counted loop.
 loop ( -- ) ends a counted loop.
 +loop ( n -- ) ends incrementing loop.
@@ -183,6 +190,13 @@ ddel ( d key -- ) deletes key.
 d@| ( d key def -- val ) gets or default.
 << ( -- ) starts variable-length argument collection.
 >> ( -- count ) ends collection, pushes item count.
+sprintf ( fmt args count -- str ) formatted string.
+<ints> ( n -- ) create an array of n ints from the stack.
+<floats> ( n -- ) create an array of n floats from the stack.
+<strings> ( n -- ) create an array of n strings from the stack.
+<bytes> ( n -- ) create an array of n bytes from the stack.
+<things> ( n -- ) create an array of n stack items.
+<<\" ( chars -- ) varlen quoted string.
 <@push> ( arr item1...itemN count -- arr ) pushes multiple items to array.
 @spread ( arr -- item1...itemN count ) spreads array to stack.`)
 
@@ -201,13 +215,15 @@ skip-parse ( delim -- ) skips input until delimiter.`)
 	RegisterHelp("parsing", `: ( name -- ) starts word definition.
 ; ( -- ) ends word definition.
 immediate ( -- ) makes last word immediate.
+\\ ( -- ) line comment.
+( ccc ) ( -- ) paren comment.
 [[ ( -- ) enters interpretation mode.
+[ ( -- ) quotation start.
+] ( -- ) quotation end.
 ]] ( -- ) leaves interpretation mode.
 literal ( val -- ) compiles literal value.
-compile-xt ( xt -- ) compiles execution token.
-postpone ( -- ) defers compilation of next word.
+<postpone> ( name -- ) postpones next word.
 (| ( -- ) starts local variable declaration.
-|) ( -- ) ends local variable declaration.
 read-token ( -- str ) reads next token.
 lookup-xt ( str -- xt ) finds execution token.
 eval ( str -- ) evaluates string.
