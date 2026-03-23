@@ -10,13 +10,6 @@ import (
 	"strings"
 )
 
-// sourceLevel holds information about a single input source
-type sourceLevel struct {
-	reader  io.RuneReader
-	closer  io.Closer
-	context string
-}
-
 // define a few constant opcodes that are reliable
 // so we don't have to look them up all the time
 const (
@@ -995,6 +988,7 @@ func NewVM(in io.Reader, out io.Writer) *VM {
 	comparisonWordsInit(ans)
 	varLenWordsInit(ans)
 	extensionsWordsInit(ans)
+	helpWordsInit(ans)
 
 	// these come from this file...
 	ans.Define(&NativeWord{name: "mark", run: mark, immediate: false})
@@ -1008,6 +1002,105 @@ func NewVM(in io.Reader, out io.Writer) *VM {
 	ans.Define(&NativeWord{name: "throw", run: opThrow, immediate: false})
 
 	_ = mark(ans) // give the vm an initial mark after all the core words are added
+
+	// Register base help categories
+	RegisterHelp("core", `swap ( a b -- b a ) exchanges the top two items on the stack.
+dup ( a -- a a ) duplicates the top item on the stack.
+drop ( a -- ) removes the top item from the stack.
+over ( a b -- a b a ) copies the second item to the top.
+rot ( a b c -- b c a ) rotates the top three items.
++ ( n1 n2 -- n3 ) adds two numbers.
+- ( n1 n2 -- n3 ) subtracts n2 from n1.
+* ( n1 n2 -- n3 ) multiplies two numbers.
+/ ( n1 n2 -- n3 ) divides n1 by n2.
+** ( n1 n2 -- n3 ) raises n1 to the power of n2.
+sqrt ( n -- sqrt(n) ) computes square root.
+log ( n -- log(n) ) computes natural logarithm.
+log10 ( n -- log10(n) ) computes base-10 logarithm.
+log2 ( n -- log2(n) ) computes base-2 logarithm.
+max ( n1 n2 -- max ) returns the maximum of two numbers.
+min ( n1 n2 -- min ) returns the minimum of two numbers.
+sin ( n -- sin(n) ) computes sine.
+cos ( n -- cos(n) ) computes cosine.
+tan ( n -- tan(n) ) computes tangent.
+round ( n -- round(n) ) rounds to nearest integer.
+floor ( n -- floor(n) ) rounds down to integer.
+ceil ( n -- ceil(n) ) rounds up to integer.
+= ( a b -- bool ) tests if two values are equal.
+< ( n1 n2 -- bool ) tests if n1 is less than n2.
+> ( n1 n2 -- bool ) tests if n1 is greater than n2.
+and ( n1 n2 -- n3 ) bitwise AND of two numbers.
+or ( n1 n2 -- n3 ) bitwise OR of two numbers.
+xor ( n1 n2 -- n3 ) bitwise XOR of two numbers.
+not ( n -- ~n ) bitwise NOT of a number.
+if ( bool -- ) begins a conditional block.
+else ( -- ) provides alternative in conditional.
+then ( -- ) ends a conditional block.
+begin ( -- ) starts an indefinite loop.
+until ( bool -- ) ends loop when condition is true.
+do ( limit index -- ) starts a counted loop.
+loop ( -- ) ends a counted loop.
+i ( -- index ) gets current loop index.
+j ( -- index ) gets outer loop index.
+variable ( val name -- ) creates a named variable.
+constant ( val name -- ) creates a named constant.
+@ ( var -- val ) gets value from variable.
+! ( val var -- ) sets value in variable.
+execute ( xt -- ) executes an execution token.
+catch? ( ?? n xt -- ?? bool ) executes xt catching errors.
+throw ( str -- ) throws an exception with message.
+mark ( -- ) marks current VM state.
+forget ( -- ) forgets back to last mark.
+debug. ( -- ) prints compiled code for debugging.`)
+
+	RegisterHelp("containers", `array ( -- arr ) creates a new empty array.
+array-push ( val arr -- ) adds value to end of array.
+array-pop ( arr -- val ) removes and returns last value.
+array-get ( arr idx -- val ) gets value at index.
+array-set ( val arr idx -- ) sets value at index.
+array-len ( arr -- len ) gets array length.
+dict ( -- d ) creates a new empty dictionary.
+dict-get ( d key -- val ) gets value for key.
+dict-set ( val d key -- ) sets value for key.
+dict-has? ( d key -- bool ) checks if key exists.
+dict-keys ( d -- keys ) gets all keys as array.
+varlen-push ( val -- ) adds to variable-length buffer.
+varlen-pop ( -- val ) removes from variable-length buffer.
+varlen-get ( idx -- val ) gets value at index.
+varlen-set ( val idx -- ) sets value at index.
+varlen-len ( -- len ) gets buffer length.`)
+
+	RegisterHelp("io", `type ( str -- ) prints string without newline.
+. ( val -- ) prints value with space.
+cr ( -- ) prints a newline.
+.s ( -- ) prints stack contents.
+read-line ( -- str ) reads line from input.
+read ( delim -- str ) reads until delimiter.
+parse ( delim -- str ) parses from input source.
+" ( -- str ) parses string literal.
+chr ( n -- str ) converts number to character.
+ord ( str -- n ) converts character to number.
+skip-parse ( delim -- ) skips input until delimiter.`)
+
+	RegisterHelp("parsing", `: ( name -- ) starts word definition.
+; ( -- ) ends word definition.
+immediate ( -- ) makes last word immediate.
+[[ ( -- ) enters interpretation mode.
+]] ( -- ) leaves interpretation mode.
+literal ( val -- ) compiles literal value.
+compile-xt ( xt -- ) compiles execution token.
+postpone ( -- ) defers compilation of next word.
+(| ( -- ) starts local variable declaration.
+|) ( -- ) ends local variable declaration.
+read-token ( -- str ) reads next token.
+lookup-xt ( str -- xt ) finds execution token.
+eval ( str -- ) evaluates string.
+load ( filename -- ) loads and executes file.`)
+
+	RegisterHelp("extensions", `extension-list ( -- arr ) gets list of registered extensions.
+<activate-extensions> ( names... count -- ) activates extensions.
+:h ( -- ) shows help system. Can give a category followed by a regex to filter the results`)
+
 	return ans
 }
 

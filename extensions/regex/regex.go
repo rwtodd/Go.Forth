@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	forth.RegisterExtension("regex", func(vm *forth.VM) error {
+	forth.RegisterExtensionWithHelp("regex", func(vm *forth.VM) error {
 		vm.Define(forth.NewNativeWord("rx:", rxString))
 		vm.Define(forth.NewNativeWord("rx-compile", rxCompile))
 		vm.Define(forth.NewNativeWord("rx-match?", rxMatch))
@@ -23,7 +23,17 @@ func init() {
 
 		// [rx:] validates compiling a Regex string. Equivalent to `[[ rx: /.../ ]] literal`
 		return vm.Eval(`: [rx:] rx: [[ <<" literal ">> ]] <postpone> ; immediate`)
-	})
+	}, `rx: ( -- str ) parses a regex string from the input stream.
+rx-compile ( pattern -- rx ) compiles a regex pattern string into a regex object.
+rx-match? ( string pattern -- False | groups start-index True ) matches string against pattern, returns groups array, start index, and true if matched.
+rx-gsub ( string pattern replacement -- string ) globally replaces all matches of pattern in string with replacement.
+rx-sub ( string pattern replacement -- string ) replaces the first match of pattern in string with replacement.
+rx-split ( string pattern -- array ) splits string by pattern into an array of strings.
+rx-gmatch? ( string pattern xt -- count ) executes xt for each match, passing index and groups array, returns match count.
+rx-find ( string pattern -- string ) returns the first substring that matches the pattern.
+rx-gfind ( string pattern -- array ) returns all substrings that match the pattern.
+[rx:] ( -- ) immediate word that compiles a regex literal.
+rx-of ( #of -- orig #of+1 / x -- ) immediate word for regex pattern matching in loops.`)
 }
 
 func parseRegexString(vm *forth.VM) (string, error) {

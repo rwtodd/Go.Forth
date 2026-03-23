@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	forth.RegisterExtension("strings", func(vm *forth.VM) error {
+	forth.RegisterExtensionWithHelp("strings", func(vm *forth.VM) error {
 		vm.Define(forth.NewNativeWord(`blank""?`, isBlank))
 		vm.Define(forth.NewNativeWord(`len""`, strLen))
 		vm.Define(forth.NewNativeWord(`trim""`, trim))
@@ -26,7 +26,22 @@ func init() {
 		vm.Define(forth.NewNativeWord(`index""`, indexStr))
 		vm.Define(forth.NewNativeWord(`contains""?`, contains))
 		return nil
-	})
+	}, `blank""? ( str -- bool ) checks if a string is entirely whitespace or empty.
+len"" ( str -- len ) returns the length of the string in bytes.
+trim"" ( str -- str ) trims whitespace from both ends of the string.
+triml"" ( str -- str ) trims leading whitespace from the string.
+trimr"" ( str -- str ) trims trailing whitespace from the string.
+starts""? ( str prefix -- bool ) checks if the target string starts with the prefix.
+ends""? ( str suffix -- bool ) checks if the target string ends with the suffix.
+upper"" ( str -- str ) converts the string to uppercase.
+lower"" ( str -- str ) converts the string to lowercase.
+split"" ( str sep -- arr ) splits the string by a separator into an array of strings.
+@join"" ( arr sep -- str ) joins an array of strings by a separator.
+<join""> ( str1 ... strn n sep -- str ) takes n strings from the stack and joins them by a separator.
+sub"" ( str idx1 idx2 -- substr ) extracts the substring [idx1, idx2).
+replace"" ( str old new -- str ) replaces all occurrences of old with new in the string.
+index"" ( str substr -- index ) returns the byte index of the first instance of substr, or -1 if not found.
+contains""? ( str substr -- bool ) checks if the target string contains the substring.`)
 }
 
 func pushBool(vm *forth.VM, b bool) {

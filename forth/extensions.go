@@ -10,15 +10,24 @@ import (
 // extensionRegistry holds the registered extensions
 var (
 	extensionRegistry = make(map[string]func(*VM) error)
+	helpRegistry      = make(map[string]string)
 	registryLock      sync.RWMutex
 )
 
 // RegisterExtension registers an extension with the VM.
 // This should be called in the init() function of the extension package.
 func RegisterExtension(name string, init func(*VM) error) {
+	RegisterExtensionWithHelp(name, init, "")
+}
+
+// RegisterExtensionWithHelp registers an extension with help text.
+func RegisterExtensionWithHelp(name string, init func(*VM) error, helpText string) {
 	registryLock.Lock()
 	defer registryLock.Unlock()
 	extensionRegistry[name] = init
+	if helpText != "" {
+		helpRegistry[name] = helpText
+	}
 }
 
 // extensionList returns a list of all registered extensions
